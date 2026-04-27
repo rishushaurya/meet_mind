@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-04-26 -- MeetMind v11.2: Vercel Build Warning Fixes
+
+### Description
+Eliminated all Vercel build warnings by declaring the project as native ESM (`"type": "module"`) and pinning the Node.js engine to `18.x` to prevent unexpected auto-upgrades. Bumped version to 2.0.0.
+
+### Files Modified
+- \`package.json\` — Added `"type": "module"`, changed `"engines.node"` from `">=18.0.0"` to `"18.x"`, bumped version to `2.0.0`.
+
+### Build Status: Clean Deploy (zero warnings expected)
+
+### Next
+- Verify the Vercel deploy is clean. Wait 60s if hitting Gemini 429 rate limits during testing.
+
+---
+
 ## 2026-04-26 -- MeetMind v11.1: Chat API Fix & Upload Hint Update
 
 ### Description
