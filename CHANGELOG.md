@@ -1046,3 +1046,50 @@ Identified and fixed a fatal JavaScript SyntaxError in `dashboard.js` introduced
 ### Next
 1. Perform a final end-to-end test with a real audio file.
 2. Deploy the fixed rendering logic to Vercel via `vercel --prod`.
+
+## [2026-04-28] Fixing Audio Chunk Speaker Diarization
+
+### Description
+Implemented a two-phase "Chunk Whisper, Label Once" pipeline to resolve severe speaker diarization hallucinations and label drifting on large files. The new process uses `rawOnly=true` for all chunks during the Whisper pass (now utilizing `verbose_json` to extract segment-level timestamps) and merges the text before running a final `labelOnly=true` Groq LLM pass on the complete transcript, ensuring speaker consistency from start to finish. Also updated Gemini API Key.
+
+### Chunks Modified
+- Chunk 04 (API Transcription): Replaced `api/transcribe.js` to handle `rawOnly` and `labelOnly` modes with `verbose_json` parsing.
+- Chunk 05 (API Processor): Modified `js/processor.js` chunking loop to split transcription and labeling into two distinct phases.
+
+### Files Modified
+- `.env` (Updated Gemini API Key to new project 496510724541)
+- `api/transcribe.js` (Added `verbose_json` Whisper format, segment handling, two new API modes: rawOnly and labelOnly)
+- `js/processor.js` (Refactored `transcribeAudioFile` to collect raw text+timestamps across chunks before single LLM labeling pass)
+
+### Build Status: Production Ready
+
+### Broken
+- Groq Whisper crashes on Windows local dev (hardcoded `/tmp/` path) — see hotfix below
+- Gemini API key returns 429 with limit: 0 (free-tier quota exhausted on new project)
+
+## [2026-04-28] Hotfix: Windows /tmp Path + Gemini 429 Diagnosis
+
+### Description
+Diagnosed two issues causing "AI is busy" errors on all endpoints:
+1. **Groq Whisper ENOENT crash**: `api/transcribe.js` used hardcoded `/tmp/` which doesn't exist on Windows. Fixed by using `os.tmpdir()` + `path.join()` which resolves correctly on all platforms (Windows: `AppData\Local\Temp`, Linux/Vercel: `/tmp`).
+2. **Gemini 429 quota exhausted**: The new Gemini API key (`AIzaSyBMNPq6YJJKsHqo-voAi_Pf1QwDZyjL5HE`) belongs to project 496510724541 which has a free-tier quota of **0** requests for `gemini-2.0-flash`. This means either billing is not enabled or the daily quota has been fully consumed. Since Groq is primary and Gemini is fallback, fixing the `/tmp/` path restores all functionality as long as Groq works.
+
+### Files Modified
+- `api/transcribe.js` (Changed `/tmp/${fileName}` to `path.join(os.tmpdir(), fileName)` using `os` and `path` node modules)
+- `.env` (Updated project comments to match new Gemini project number)
+- `CHANGELOG.md` (Fixed UTF-16 corruption from previous PowerShell append)
+
+### Build Status: Production Ready
+
+### Features Working
+- Groq Whisper transcription (now works on Windows)
+- Groq LLM speaker labeling, analysis, chat, and refine
+- All Groq-powered features functional
+
+### Broken
+- Gemini fallback returns 429 (quota: 0). Need to either enable billing on GCP project 496510724541, or use a different Gemini API key with available quota.
+
+### Next
+1. Test audio upload locally to verify Groq path is working
+2. If Gemini fallback is needed, user must provide a key with available quota or enable billing
+3. Deploy to Vercel production

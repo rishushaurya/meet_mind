@@ -9,3 +9,4 @@ original_*.html
 original_*.css
 build/
 hint-report/
+.vercel

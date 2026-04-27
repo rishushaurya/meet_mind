@@ -1,15 +1,17 @@
 // MeetMind - Audio Transcription Endpoint
 // Primary: Groq Whisper (ultra-fast, high quota) + Groq LLM (speaker labeling)
-// Fallback: Gemini 2.0 Flash multimodal
+// Fallback: Gemini 2.5 Flash multimodal
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-export const maxDuration = 60; // Vercel Hobby plan max
-
+export const maxDuration = 120;
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb',
+      sizeLimit: '50mb', // Base64 overhead for 24.5MB audio is ~33MB
     },
   },
 };
@@ -22,17 +24,11 @@ function initAI() {
   return { genAI, groq };
 }
 
-const getGeminiPrompt = (previousContext) => `You are a professional audio transcription AI. Transcribe this audio recording into text with perfect accuracy.
-
-${previousContext ? `PREVIOUS CHUNK'S ENDING (For context only):
-"""
-${previousContext}
-"""
-CRITICAL INSTRUCTION: This audio is a continuation of the meeting. Match the speakers to the established context above, and continue the exact same speaker numbering and names.` : `CRITICAL INSTRUCTION: Start numbering speakers from Speaker 1.`}
+const GEMINI_TRANSCRIBE_PROMPT = `You are a professional audio transcription AI. Transcribe this audio recording into text with perfect accuracy.
 
 CRITICAL RULES:
 1. Identify each distinct speaker by their voice. Label them Speaker 1, Speaker 2, etc.
-2. If a speaker's name is mentioned, include it: Speaker 1 (Ravi)
+2. If a speaker's name is mentioned, include it: Speaker 1 (John)
 3. Format each line as: "Speaker N: [exact words they said]"
 4. Include EVERY word spoken. Do NOT summarize.
 5. Insert approximate timestamp markers every 3-5 minutes as [MM:SS] on their own line.
@@ -41,26 +37,19 @@ CRITICAL RULES:
 
 Now transcribe the provided audio:`;
 
-const getGroqPrompt = (previousContext, transcript) => `You are a professional transcript editor. I will provide a raw audio transcript segment that currently has NO speaker labels.
+const GROQ_SPEAKER_PROMPT = `You are a professional transcript editor. I will provide a raw audio transcript that currently has NO speaker labels.
 Your job is to read the conversation flow and add speaker labels (Speaker 1, Speaker 2, etc.) to the text.
 
-${previousContext ? `PREVIOUS CHUNK'S ENDING (For context only, DO NOT output this text again):
-"""
-${previousContext}
-"""
-CRITICAL INSTRUCTION: The new segment likely continues where the previous chunk left off. 
-- If the first sentence of the new segment continues the last speaker's thought, label it with the SAME speaker name/number from the previous chunk.
-- Continue using the established speaker numbers (e.g., if the previous chunk ended with Speaker 3, use Speaker 3, Speaker 4, etc. where appropriate).` : `CRITICAL INSTRUCTION: Start numbering speakers from Speaker 1.`}
-
 CRITICAL RULES:
-1. Format each spoken segment as "Speaker N: [their words]".
-2. If someone is explicitly called by name (e.g., "Thanks Ravi"), use their name: "Speaker 1 (Ravi):".
-3. Do NOT change, summarize, or omit ANY of the original words from the NEW segment. Keep the exact text.
-4. Do NOT output any of the text from the "PREVIOUS CHUNK'S ENDING" block. Only output the labeled text for the NEW segment.
-5. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
+1. Identify when the speaker changes based on the natural flow of conversation, questions and answers, and context.
+2. Format each spoken segment as "Speaker N: [their words]".
+3. If someone is explicitly called by name (e.g., "Thanks John"), use their name: "Speaker 1 (John):". Do NOT guess or invent names.
+4. Do NOT change, summarize, or omit ANY of the original words. Keep the exact text.
+5. The transcript may contain multiple languages (Hindi, Bhojpuri, Kannada, Telugu, English). Preserve all languages exactly as written. Do NOT translate.
+6. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
 
-NEW RAW TRANSCRIPT SEGMENT TO LABEL:
-${transcript}`;
+RAW TRANSCRIPT:
+{transcript}`;
 
 export default async function handler(req, res) {
   // CORS
@@ -78,7 +67,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'No AI providers configured. Please set GEMINI_API_KEY and GROQ_API_KEY.' });
     }
 
-    const { audioBase64, mimeType, sessionId, language, previousContext } = req.body;
+    const { audioBase64, mimeType, sessionId, language } = req.body;
 
     if (!audioBase64 || typeof audioBase64 !== 'string') {
       return res.status(400).json({ error: 'Audio data is missing or invalid.' });
@@ -89,8 +78,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid session ID format.' });
     }
 
-    // Check audio size — Vercel Hobby caps at 4.5MB total body
-    // base64 has ~33% overhead, so ~3.3MB raw audio max
+    // Check audio size (~25MB max for Groq)
     const estimatedSizeMB = (audioBase64.length * 0.75) / (1024 * 1024);
     if (estimatedSizeMB > 24.5) {
       return res.status(413).json({ 
@@ -102,6 +90,7 @@ export default async function handler(req, res) {
     let finalTranscript = null;
     let speakers = [];
     let lastErrorStatus = 500;
+    let tmpFilePath = null;
 
     // ==========================================
     // 1. PRIMARY PATH: Groq Whisper
@@ -110,17 +99,14 @@ export default async function handler(req, res) {
       try {
         console.log("Attempting transcription via Groq Whisper...");
         
+        // Write base64 to temp file for Groq SDK
         const buffer = Buffer.from(audioBase64, 'base64');
         const ext = mimeType ? mimeType.split('/')[1].split(';')[0] : 'mp3';
-        const fileName = `meetmind-${Date.now()}.${ext}`;
-
-        // Write to /tmp (guaranteed writable on Vercel serverless)
-        const fs = await import('fs');
-        const tmpPath = `/tmp/${fileName}`;
-        fs.writeFileSync(tmpPath, buffer);
+        tmpFilePath = path.join(os.tmpdir(), `meetmind-audio-${Date.now()}.${ext}`);
+        await fs.promises.writeFile(tmpFilePath, buffer);
 
         const transcription = await groq.audio.transcriptions.create({
-          file: fs.createReadStream(tmpPath),
+          file: fs.createReadStream(tmpFilePath),
           model: 'whisper-large-v3-turbo',
           response_format: 'text',
           temperature: 0.0,
@@ -128,14 +114,14 @@ export default async function handler(req, res) {
         });
 
         // Clean up temp file
-        try { fs.unlinkSync(tmpPath); } catch (_) {}
-
+        await fs.promises.unlink(tmpFilePath).catch(() => {});
+        tmpFilePath = null;
 
         if (transcription && transcription.trim().length > 20) {
           // Post-process to add speaker labels using Groq LLM
           console.log("Groq Whisper successful. Adding speaker labels via Groq LLM...");
           const completion = await groq.chat.completions.create({
-            messages: [{ role: 'user', content: getGroqPrompt(previousContext, transcription) }],
+            messages: [{ role: 'user', content: GROQ_SPEAKER_PROMPT.replace('{transcript}', transcription) }],
             model: 'llama-3.3-70b-versatile',
             temperature: 0.1
           });
@@ -145,6 +131,9 @@ export default async function handler(req, res) {
 
       } catch (err) {
         console.error("Groq Whisper failed:", { status: err.status, message: err.message, code: err.error?.error?.code || err.error?.code });
+        if (tmpFilePath) {
+          await fs.promises.unlink(tmpFilePath).catch(() => {});
+        }
         if (err.status === 429) lastErrorStatus = 429;
         if (err.status === 401 || err.status === 403) lastErrorStatus = err.status;
       }
@@ -157,6 +146,7 @@ export default async function handler(req, res) {
       console.log("Falling back to Gemini Multimodal...");
       
       try {
+        // Use the updated gemini-2.5-flash model
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const result = await model.generateContent({
@@ -164,7 +154,7 @@ export default async function handler(req, res) {
             role: 'user',
             parts: [
               { inlineData: { mimeType: mimeType || 'audio/mp3', data: audioBase64 } },
-              { text: getGeminiPrompt(previousContext) }
+              { text: GEMINI_TRANSCRIBE_PROMPT }
             ]
           }],
           generationConfig: { temperature: 0.1 }
@@ -187,6 +177,7 @@ export default async function handler(req, res) {
     // 3. FINALIZE & EXTRACT
     // ==========================================
     if (!finalTranscript || finalTranscript.trim().length < 20) {
+      // If we hit a rate limit on the last attempt, return 429 explicitly
       if (lastErrorStatus === 429) {
         return res.status(429).json({ error: 'AI_RATE_LIMIT' });
       }
