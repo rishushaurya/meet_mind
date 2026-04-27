@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MeetMind - AI meeting intelligence that gives every attendee their personalized action items within seconds.">
+  <title>MeetMind -- The AI that remembers your meetings</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+
+  <!-- DOMPurify -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer></script>
+
+  <!-- html2pdf.js -->
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js" defer></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236C5CE7'/><text x='50' y='68' text-anchor='middle' font-size='50' font-family='sans-serif' fill='white'>M</text></svg>">
+</head>
+<body>
+
+  <!-- Landing Page (PrismaHero adaptation) -->
+  <section id="landing-view" class="hero-section">
+    <div class="hero-wrapper">
+      <video autoplay loop muted playsinline class="hero-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4"></video>
+      <div class="hero-noise noise-overlay"></div>
+      <div class="hero-gradient"></div>
+
+      <nav class="hero-nav">
+        <div class="hero-nav-inner">
+          <a href="#how-it-works">How it works</a>
+          <a href="#demo">Demo</a>
+          <a href="#github">GitHub</a>
+        </div>
+      </nav>
+
+      <div class="hero-content">
+        <div>
+          <h1 class="hero-title">
+            <span class="word-pull-up" id="hero-title-text">
+              <span>MeetMind<span class="asterisk">*</span></span>
+            </span>
+          </h1>
+        </div>
+        <div>
+          <p class="hero-text fade-in" style="animation-delay: 0.5s;">
+            MeetMind is an AI that attends your meetings so you don't have to remember them. It extracts personalized action items, priorities, and deadlines for every single attendee within seconds.
+          </p>
+          <button class="hero-btn fade-in" style="animation-delay: 0.7s;" onclick="app.showView('input-view')">
+            Get started
+            <span class="hero-btn-icon">
+              <i data-lucide="arrow-right"></i>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main App Container for other views -->
+  <div id="app-container" class="container hidden">
+    
+    <!-- Header for App -->
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) 0; margin-bottom: var(--space-xl);">
+      <h2 style="font-weight: 800; color: var(--color-primary); cursor: pointer;" onclick="app.showView('landing-view')">MeetMind*</h2>
+      <button class="btn btn-outline" onclick="app.toggleTheme()">
+        <i data-lucide="moon" id="theme-icon"></i>
+      </button>
+    </header>
+
+    <!-- Input View -->
+    <section id="input-view" class="section-padding">
+      <div class="upload-card glass-panel">
+        <h3>Process Meeting</h3>
+        
+        <!-- Tabs for input types -->
+        <div class="tabs-nav" style="margin-bottom: var(--space-lg); display: inline-flex;">
+          <button class="tab-btn active" onclick="app.switchInputTab('upload')">
+            <div class="tab-btn-bg"></div>
+            <span>Upload Audio/Transcript</span>
+          </button>
+          <button class="tab-btn" onclick="app.switchInputTab('paste')">
+            <div class="tab-btn-bg"></div>
+            <span>Paste Text</span>
+          </button>
+          <button class="tab-btn" onclick="app.switchInputTab('record')">
+            <div class="tab-btn-bg"></div>
+            <span>Live Record</span>
+          </button>
+        </div>
+
+        <!-- Upload Zone -->
+        <div id="input-tab-upload">
+          <div class="upload-zone" id="drop-zone">
+            <i data-lucide="upload"></i>
+            <div style="margin-top: 16px;">
+              <label for="file-upload">Drag and drop or choose file to upload</label>
+              <input id="file-upload" type="file" accept=".txt,.srt,.mp3,.mp4,.wav" onchange="app.handleFileSelect(event)">
+            </div>
+            <p class="upload-hint" style="margin-top: 8px;">Recommended max. size: 25MB. Accepted: TXT, SRT, MP3, WAV</p>
+          </div>
+
+          <!-- Selected File (Hidden by default) -->
+          <div id="selected-file" class="file-item hidden">
+            <div class="file-item-icon">
+              <i data-lucide="file-audio"></i>
+            </div>
+            <div class="file-item-info">
+              <p class="file-item-name" id="file-name">meeting_recording.mp3</p>
+              <div class="file-item-meta">
+                <span id="file-size">3.1 MB</span>
+                <span style="color: var(--color-success);">Ready</span>
+              </div>
+            </div>
+            <button class="file-item-remove" onclick="app.removeFile()">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Paste Zone -->
+        <div id="input-tab-paste" class="hidden">
+          <textarea id="paste-input" class="text-input-area" placeholder="Paste your meeting transcript here...
+Example:
+Speaker 1: Hello everyone.
+Speaker 2: Hi, let's start the meeting."></textarea>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.875rem; color: var(--color-text-secondary);">
+            <span id="paste-word-count">0 words</span>
+          </div>
+        </div>
+
+        <!-- Record Zone -->
+        <div id="input-tab-record" class="hidden">
+          <div class="recording-zone">
+            <div id="record-pulse" class="pulse-ring paused">
+              <i data-lucide="mic"></i>
+            </div>
+            <h4 id="record-status">Ready to Record</h4>
+            <p id="record-timer" style="margin-top: 4px; font-variant-numeric: tabular-nums;">00:00</p>
+            
+            <div style="margin-top: 24px; display: flex; gap: 12px;">
+              <button id="btn-start-record" class="btn btn-primary" onclick="recorder.startRecording()">Start</button>
+              <button id="btn-stop-record" class="btn btn-outline" onclick="recorder.stopRecording()" disabled>Stop</button>
+            </div>
+          </div>
+          
+          <div id="live-captions" class="live-captions hidden">
+            <!-- Captions go here -->
+          </div>
+        </div>
+
+        <!-- Attendee Chips Input -->
+        <div class="attendee-input-container">
+          <h4 style="margin-bottom: 8px; font-size: 0.875rem;">Attendees (Required)</h4>
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 12px;">Press Enter or comma to add. We need this to attribute action items correctly.</p>
+          
+          <div class="chips-wrapper" id="attendee-chips">
+            <!-- Chips will be inserted here -->
+          </div>
+          
+          <input type="text" id="attendee-input" class="chip-input" placeholder="Type a name and press Enter...">
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="upload-actions">
+          <button class="btn btn-outline" onclick="app.showView('landing-view')">Cancel</button>
+          <button class="btn btn-primary" onclick="app.handleProcessMeetingClick()">Preview Transcript</button>
+        </div>
+      </div>
+
+      <!-- Recent Meetings / Preview Design Showcase -->
+      <div class="showcase-section" style="margin-top: 80px;">
+        <h2 class="showcase-header">Demo Meetings</h2>
+        
+        <div class="showcase-list">
+          <a href="#" class="showcase-item" onmouseenter="app.showHoverImage('demo1')" onmouseleave="app.hideHoverImage()">
+            <div class="showcase-item-bg"></div>
+            <div class="showcase-content">
+              <div>
+                <div class="showcase-title-row">
+                  <h3 class="showcase-title">Hackathon Planning Sync</h3>
+                  <i data-lucide="arrow-up-right" class="showcase-icon"></i>
+                </div>
+                <p class="showcase-desc">4 Attendees. Planning architecture and tasks.</p>
+              </div>
+              <span class="showcase-meta">8 mins</span>
+            </div>
+          </a>
+          
+          <a href="#" class="showcase-item" onmouseenter="app.showHoverImage('demo2')" onmouseleave="app.hideHoverImage()">
+            <div class="showcase-item-bg"></div>
+            <div class="showcase-content">
+              <div>
+                <div class="showcase-title-row">
+                  <h3 class="showcase-title">Startup Standup</h3>
+                  <i data-lucide="arrow-up-right" class="showcase-icon"></i>
+                </div>
+                <p class="showcase-desc">3 Founders. Product launch blockers.</p>
+              </div>
+              <span class="showcase-meta">12 mins</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transcript Preview View -->
+    <section id="preview-view" class="section-padding hidden">
+      <div class="upload-card glass-panel" style="max-width: 800px;">
+        <h3 style="margin-bottom: 8px;">Review Transcript</h3>
+        <p style="color: var(--color-text-secondary); margin-bottom: 24px; font-size: 0.875rem;">Edit any mistakes before AI processing. Ensure speaker labels are clear.</p>
+
+        <div id="preview-editor" class="preview-editor" contenteditable="true">
+          <!-- Text injected here -->
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <button class="btn btn-outline" onclick="app.showView('input-view')">Back</button>
+          <button class="btn btn-primary" onclick="app.confirmAndProcess()">Confirm & Process AI</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading View -->
+    <section id="loading-view" class="hidden">
+      <div class="loading-view">
+        <div class="spinner"></div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 8px;">MeetMind is thinking...</h2>
+        <p style="color: var(--color-text-secondary);" id="loading-status">Analyzing transcript and extracting action items.</p>
+        
+        <!-- Animated loading dots -->
+        <div style="margin-top: 24px; display: flex; gap: 8px; align-items: center; justify-content: center;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate;"></div>
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate 0.2s;"></div>
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate 0.4s;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard View -->
+    <section id="dashboard-view" class="hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xl);">
+        <h2 style="font-size: 2rem; font-weight: 700;">Meeting Results</h2>
+        <button class="btn btn-outline" onclick="app.showView('input-view')">
+          <i data-lucide="arrow-left" style="width: 16px; height: 16px; margin-right: 8px;"></i> Back
+        </button>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Left Col: Summary & Charts -->
+        <div style="display: flex; flex-direction: column; gap: var(--space-xl);">
+          
+          <!-- Summary Card -->
+          <div class="summary-card glass-panel">
+            <header class="summary-header">
+              <div>
+                <h2>Meeting Summary</h2>
+                <p>Hackathon Planning Sync</p>
+              </div>
+              <div class="summary-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="action-btn" onclick="exports.copyAll()" title="Copy All"><i data-lucide="copy"></i></button>
+                <button class="action-btn" onclick="exports.copyWhatsApp()" title="Share via WhatsApp"><i data-lucide="share-2"></i></button>
+                <button class="action-btn" onclick="exports.exportPDF()" title="Export PDF"><i data-lucide="download"></i></button>
+                <button class="btn btn-primary" onclick="app.showView('landing-view'); app.state.result = null;" style="padding: 8px 16px; font-size: 14px;">New Meeting</button>
+              </div>
+            </header>
+
+            <div class="summary-hero">
+              <div class="summary-hero-content">
+                <h3 style="color: var(--color-primary);">Score: 8/10</h3>
+                <p>Productive planning session with clear assignments.</p>
+                
+                <div class="summary-metrics">
+                  <div class="metric">
+                    <i data-lucide="users"></i>
+                    <div>
+                      <p class="metric-label">ATTENDEES</p>
+                      <p class="metric-val">4</p>
+                    </div>
+                  </div>
+                  <div class="metric">
+                    <i data-lucide="check-circle-2"></i>
+                    <div>
+                      <p class="metric-label">TASKS</p>
+                      <p class="metric-val">12</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ul class="stat-list">
+              <li class="stat-item">
+                <div class="stat-left">
+                  <div class="stat-icon" style="background: rgba(108, 92, 231, 0.2); color: #8A7BFF;">
+                    <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="stat-label">Decisions Made</span>
+                </div>
+                <p class="stat-val">3</p>
+              </li>
+              <li class="stat-item">
+                <div class="stat-left">
+                  <div class="stat-icon" style="background: rgba(255, 82, 82, 0.2); color: #FF8A8A;">
+                    <i data-lucide="help-circle" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="stat-label">Unresolved Questions</span>
+                </div>
+                <p class="stat-val">1</p>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Chart Container -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>Talk Time Percentage</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="talkTimeChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Col: Person Cards (Animated Tabs) -->
+        <div>
+          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-md);">Attendee Action Items</h3>
+          <div class="tabs-container">
+            <div class="tabs-nav" id="person-tabs">
+              <button class="tab-btn active" onclick="app.switchPersonTab('person-1', this)">
+                <div class="tab-btn-bg"></div>
+                <span>Rahul</span>
+              </button>
+              <button class="tab-btn" onclick="app.switchPersonTab('person-2', this)">
+                <div class="tab-btn-bg"></div>
+                <span>Priya</span>
+              </button>
+              <button class="tab-btn" onclick="app.switchPersonTab('person-3', this)">
+                <div class="tab-btn-bg"></div>
+                <span>Amit</span>
+              </button>
+            </div>
+
+            <div class="tabs-content">
+              <!-- Person 1 -->
+              <div id="person-1" class="tab-pane active">
+                <div class="tab-info">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h2>Rahul</h2>
+                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Backend</span>
+                  </div>
+                  <p>3 Action Items • 1 Deadline</p>
+                  
+                  <ul class="action-list">
+                    <li class="action-item">
+                      Setup Vercel serverless function
+                      <div style="font-size: 0.75rem; color: var(--color-danger); margin-top: 4px;">Due: Thursday</div>
+                    </li>
+                    <li class="action-item">Integrate Gemini API</li>
+                    <li class="action-item">Write DOMPurify sanitization wrapper</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Person 2 -->
+              <div id="person-2" class="tab-pane">
+                <div class="tab-info">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h2>Priya</h2>
+                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Frontend</span>
+                  </div>
+                  <p>2 Action Items • 0 Deadlines</p>
+                  
+                  <ul class="action-list">
+                    <li class="action-item">Build UI components based on React references</li>
+                    <li class="action-item">Implement Chart.js visualizations</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Person 3 -->
+              <div id="person-3" class="tab-pane">
+                <div class="tab-info">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h2>Amit</h2>
+                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Design</span>
+                  </div>
+                  <p>1 Action Item • 1 Dependency</p>
+                  
+                  <ul class="action-list">
+                    <li class="action-item">
+                      Create CSS design system
+                      <div style="font-size: 0.75rem; color: var(--color-warning); margin-top: 4px;">Depends on: Priya's HTML structure</div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Floating Image for Showcase Hover -->
+  <div id="floating-image" class="floating-image">
+    <img id="hover-img-demo1" src="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=2000&auto=format&fit=crop" alt="Demo 1">
+    <img id="hover-img-demo2" src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2000&auto=format&fit=crop" alt="Demo 2">
+  </div>
+
+  <!-- App Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/recorder.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/processor.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
