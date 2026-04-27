@@ -31,14 +31,16 @@ const processor = {
 
     let fullTranscript = '';
     const allSpeakers = new Set();
+    let previousContext = '';
 
     for (let i = 0; i < chunks.length; i++) {
       this.showLoadingStep(1, 'transcribe', `Transcribing part ${i + 1} of ${chunks.length}...`);
       const base64 = await this.fileToBase64(chunks[i]);
-      const result = await this._transcribeChunk(base64, 'audio/wav', i, chunks.length);
+      const result = await this._transcribeChunk(base64, 'audio/wav', i, chunks.length, previousContext);
 
       if (result.transcript) {
         fullTranscript += (fullTranscript ? '\n' : '') + result.transcript;
+        previousContext = fullTranscript.slice(-1000);
       }
       if (result.speakers) {
         result.speakers.forEach(s => allSpeakers.add(s));
@@ -137,7 +139,7 @@ const processor = {
     });
   },
 
-  async _transcribeChunk(audioBase64, mimeType, chunkIndex, totalChunks) {
+  async _transcribeChunk(audioBase64, mimeType, chunkIndex, totalChunks, previousContext = '') {
     if (totalChunks === 1) {
       this.showLoadingStep(0, 'transcribe'); // "Uploading audio..."
     }
@@ -158,7 +160,8 @@ const processor = {
           body: JSON.stringify({
             audioBase64,
             mimeType,
-            sessionId: app.state.sessionId
+            sessionId: app.state.sessionId,
+            previousContext
           }),
           signal: controller.signal
         });

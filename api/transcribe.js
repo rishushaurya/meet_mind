@@ -22,7 +22,13 @@ function initAI() {
   return { genAI, groq };
 }
 
-const GEMINI_TRANSCRIBE_PROMPT = `You are a professional audio transcription AI. Transcribe this audio recording into text with perfect accuracy.
+const getGeminiPrompt = (previousContext) => `You are a professional audio transcription AI. Transcribe this audio recording into text with perfect accuracy.
+
+${previousContext ? `PREVIOUS CHUNK'S ENDING (For context only):
+"""
+${previousContext}
+"""
+CRITICAL INSTRUCTION: This audio is a continuation of the meeting. Match the speakers to the established context above, and continue the exact same speaker numbering and names.` : `CRITICAL INSTRUCTION: Start numbering speakers from Speaker 1.`}
 
 CRITICAL RULES:
 1. Identify each distinct speaker by their voice. Label them Speaker 1, Speaker 2, etc.
@@ -35,19 +41,26 @@ CRITICAL RULES:
 
 Now transcribe the provided audio:`;
 
-const GROQ_SPEAKER_PROMPT = `You are a professional transcript editor. I will provide a raw audio transcript that currently has NO speaker labels.
+const getGroqPrompt = (previousContext, transcript) => `You are a professional transcript editor. I will provide a raw audio transcript segment that currently has NO speaker labels.
 Your job is to read the conversation flow and add speaker labels (Speaker 1, Speaker 2, etc.) to the text.
 
-CRITICAL RULES:
-1. Identify when the speaker changes based on the natural flow of conversation, questions and answers, and context.
-2. Format each spoken segment as "Speaker N: [their words]".
-3. If someone is explicitly called by name (e.g., "Thanks Ravi"), use their name: "Speaker 1 (Ravi):".
-4. Do NOT change, summarize, or omit ANY of the original words. Keep the exact text.
-5. The transcript may contain multiple languages (Hindi, Bhojpuri, Kannada, Telugu, English). Preserve all languages exactly as written. Do NOT translate.
-6. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
+${previousContext ? `PREVIOUS CHUNK'S ENDING (For context only, DO NOT output this text again):
+"""
+${previousContext}
+"""
+CRITICAL INSTRUCTION: The new segment likely continues where the previous chunk left off. 
+- If the first sentence of the new segment continues the last speaker's thought, label it with the SAME speaker name/number from the previous chunk.
+- Continue using the established speaker numbers (e.g., if the previous chunk ended with Speaker 3, use Speaker 3, Speaker 4, etc. where appropriate).` : `CRITICAL INSTRUCTION: Start numbering speakers from Speaker 1.`}
 
-RAW TRANSCRIPT:
-{transcript}`;
+CRITICAL RULES:
+1. Format each spoken segment as "Speaker N: [their words]".
+2. If someone is explicitly called by name (e.g., "Thanks Ravi"), use their name: "Speaker 1 (Ravi):".
+3. Do NOT change, summarize, or omit ANY of the original words from the NEW segment. Keep the exact text.
+4. Do NOT output any of the text from the "PREVIOUS CHUNK'S ENDING" block. Only output the labeled text for the NEW segment.
+5. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
+
+NEW RAW TRANSCRIPT SEGMENT TO LABEL:
+${transcript}`;
 
 export default async function handler(req, res) {
   // CORS
@@ -65,7 +78,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'No AI providers configured. Please set GEMINI_API_KEY and GROQ_API_KEY.' });
     }
 
-    const { audioBase64, mimeType, sessionId, language } = req.body;
+    const { audioBase64, mimeType, sessionId, language, previousContext } = req.body;
 
     if (!audioBase64 || typeof audioBase64 !== 'string') {
       return res.status(400).json({ error: 'Audio data is missing or invalid.' });
@@ -122,7 +135,7 @@ export default async function handler(req, res) {
           // Post-process to add speaker labels using Groq LLM
           console.log("Groq Whisper successful. Adding speaker labels via Groq LLM...");
           const completion = await groq.chat.completions.create({
-            messages: [{ role: 'user', content: GROQ_SPEAKER_PROMPT.replace('{transcript}', transcription) }],
+            messages: [{ role: 'user', content: getGroqPrompt(previousContext, transcription) }],
             model: 'llama-3.3-70b-versatile',
             temperature: 0.1
           });
@@ -151,7 +164,7 @@ export default async function handler(req, res) {
             role: 'user',
             parts: [
               { inlineData: { mimeType: mimeType || 'audio/mp3', data: audioBase64 } },
-              { text: GEMINI_TRANSCRIBE_PROMPT }
+              { text: getGeminiPrompt(previousContext) }
             ]
           }],
           generationConfig: { temperature: 0.1 }

@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-04-28 -- MeetMind v15: Sliding Window Audio Diarization Fix
+
+### Description
+Client-side audio chunking was introduced in the previous version to bypass Vercel's 4.5MB limit payload limit, which inadvertently broke speaker tracking and naming across chunk boundaries. Implemented a "Sliding Window Context" to restore perfect speaker diarization.
+
+### Features Added
+- **Sliding Window Context**: The frontend `js/processor.js` now stores the trailing 1,000 characters from the previous audio chunk's transcript.
+- **Dynamic Context Prompts**: The backend `api/transcribe.js` receives `previousContext` and dynamically injects it into both `GROQ_SPEAKER_PROMPT` and `GEMINI_TRANSCRIBE_PROMPT`. The LLM uses this context to maintain consistent "Speaker N" numbering and persist associated names across arbitrary 90-second audio splits.
+
+### Files Modified
+- \`js/processor.js\` (Added `previousContext` loop persistence and injection into `_transcribeChunk`)
+- \`api/transcribe.js\` (Converted static prompts to dynamic functions, updated LLM fetch body)
+
+---
+
 ## 2026-04-28 -- MeetMind v14: Polish & Perfection
 
 ### Description
