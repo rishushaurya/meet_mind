@@ -32,7 +32,8 @@ CRITICAL RULES:
 3. Format each line as: "Speaker N: [exact words they said]"
 4. Include EVERY word spoken. Do NOT summarize.
 5. Insert approximate timestamp markers every 3-5 minutes as [MM:SS] on their own line.
-6. Do NOT add any commentary, headers, or metadata. ONLY output the transcript.
+6. The audio may contain multiple languages including Hindi, Bhojpuri, Kannada, Telugu, and English. Transcribe ALL words exactly as spoken in their original language. Do NOT translate.
+7. Do NOT add any commentary, headers, or metadata. ONLY output the transcript.
 
 Now transcribe the provided audio:`;
 
@@ -44,7 +45,8 @@ CRITICAL RULES:
 2. Format each spoken segment as "Speaker N: [their words]".
 3. If someone is explicitly called by name (e.g., "Thanks Ravi"), use their name: "Speaker 1 (Ravi):".
 4. Do NOT change, summarize, or omit ANY of the original words. Keep the exact text.
-5. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
+5. The transcript may contain multiple languages (Hindi, Bhojpuri, Kannada, Telugu, English). Preserve all languages exactly as written. Do NOT translate.
+6. Do NOT add any introductory text, commentary, or markdown formatting. Just output the labeled transcript.
 
 RAW TRANSCRIPT:
 {transcript}`;
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'No AI providers configured. Please set GEMINI_API_KEY and GROQ_API_KEY.' });
     }
 
-    const { audioBase64, mimeType, sessionId } = req.body;
+    const { audioBase64, mimeType, sessionId, language } = req.body;
 
     if (!audioBase64 || typeof audioBase64 !== 'string') {
       return res.status(400).json({ error: 'Audio data is missing or invalid.' });
@@ -107,7 +109,8 @@ export default async function handler(req, res) {
           file: fs.createReadStream(tmpFilePath),
           model: 'whisper-large-v3-turbo',
           response_format: 'text',
-          temperature: 0.0
+          temperature: 0.0,
+          language: language || undefined
         });
 
         // Clean up temp file

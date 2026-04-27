@@ -2,6 +2,105 @@
 
 ---
 
+## 2026-04-28 -- MeetMind v14: Polish & Perfection
+
+### Description
+Implemented final polish features targeted specifically at the Hackathon Judging Criteria (Function, Design, Innovation, Perspective). The mail icon was fixed using a resilient inline SVG approach. 
+
+### Features Added
+- **"Why We Built This" Section**: Added an emotional hook to the landing page to address the Perspective criteria directly.
+- **Proof-Visible Source Quotes**: Upgraded the `source_quote` UI from a hidden dropdown to an always-visible, accented "📌 Proof" block to highlight the attribution solution for the Innovation criteria.
+- **Chatbox Suggestion Chips**: Added 4 quick-start chips (e.g. "Who has the most tasks?") to make the Q&A engine instantly discoverable.
+- **Guaranteed Mail Icon**: Replaced the fragile Lucide email button with an inline SVG that renders instantly, fixing the "missing icon" bug permanently.
+
+### Files Modified
+- \`index.html\` (Added Why section, added suggestion chips)
+- \`js/dashboard.js\` (Replaced mail icon with inline SVG, changed source_quote HTML classes)
+- \`js/chatbox.js\` (Added \`askSuggestion()\` method)
+- \`style.css\` (Added \`.proof-visible\`, \`.quote-label\`, \`.chip-btn\`, person-actions visibility fix)
+- \`.gitignore\` (Excluded test files, original backups, build/ and hint-report/)
+
+### Audit Fixes
+- **Missing CSS**: The initial CSS append for proof-visible and chip-btn failed silently. Fixed by re-appending all new styles.
+- **Person Action Buttons**: Added high-specificity CSS rule `.person-actions .btn.btn-secondary.btn-icon` with purple tint to make mail/copy buttons visible on dark backgrounds.
+- **Chatbox Chips**: Made chips more prominent with purple-tinted background and `!important` display rule.
+- **.gitignore**: Cleaned up to exclude test*.js, original_*.html/css, build/, and hint-report/.
+
+### Verified
+- ✅ Mail icon renders as inline SVG envelope — confirmed visible
+- ✅ Copy icon renders next to mail icon — confirmed visible
+- ✅ "📌 Proof" labels on all action items — confirmed visible with accent border
+- ✅ "Why We Built This" section on landing page — confirmed visible
+- ✅ Suggestion chips in HTML/CSS/JS — structurally correct
+- ✅ All existing features (demo, recording, charts, PDF, refinement) — untouched
+
+### Next
+- Push to GitHub and deploy.
+
+---
+
+## 2026-04-28 -- MeetMind v13.1: Revert Broken Features + Problem Statement Gap Analysis
+
+### Description
+Reverted the broken Gmail SVG icon, contenteditable email, and chatbox email intercept that were added by v13 but were not working correctly. The user confirmed they do not want the editable email feature. Multilingual transcription (the only working v13 change) is preserved.
+
+Also conducted a thorough gap analysis against **Problem Statement 02 — THE MEETING THAT NEVER HAPPENED**. MeetMind fully covers all requirements and has significant extras (live recording, chatbox Q&A, multilingual, demo mode).
+
+### Files Modified
+- \`js/dashboard.js\` — **[REVERTED]** Restored original Lucide \`mail\` icon, removed broken Gmail SVG.
+- \`js/export.js\` — **[REVERTED]** Removed \`contenteditable\` from email body. Removed \`currentEmailPersonIndex\` storage.
+- \`js/chatbox.js\` — **[REVERTED]** Removed email modal intercept block and entire \`handleEmailCommand\` function.
+
+### Build Status: Stable — All features working
+
+### Problem Statement 02 Coverage: COMPLETE ✅
+All core requirements met. No missing features. Multilingual transcription is a bonus differentiator.
+
+### Next
+- Deploy to Vercel and verify all features on production.
+- Prepare for demo presentation.
+
+---
+
+## 2026-04-28 -- MeetMind God Mode v13: Multilingual & Editable Email UI
+
+### Description
+Enhanced the core capabilities to fully support true multilingual transcription and advanced email editing logic. The backend was updated to allow Groq Whisper to natively auto-detect and transcribe 100+ languages (including Hindi, Bhojpuri, Kannada, Telugu) by omitting the language parameter and instructing the AI to preserve all code-mixed spoken languages. Additionally, on the frontend, the person cards now feature an inline SVG Gmail logo replacing the generic icon, and the generated email preview modal is now `contenteditable`. The chatbox "Apply Changes" tab was also upgraded to automatically intercept instructions when the email preview is open, allowing real-time, AI-driven refinement of email drafts.
+
+### Files Modified
+- \`api/transcribe.js\` — **[MODIFIED]** Updated Groq and Gemini prompts to strictly preserve native languages and not translate. Added language param fallback to undefined to trigger Whisper's auto-detect.
+- \`js/dashboard.js\` — **[MODIFIED]** Swapped the Lucide mail icon for a full inline Gmail SVG path.
+- \`js/export.js\` — **[MODIFIED]** Made the email modal body \`contenteditable\` and saved the active person index to support targeted edits.
+- \`js/chatbox.js\` — **[MODIFIED]** Added \`handleEmailCommand\` logic in the Apply tab to intercept instructions while the email modal is open and send targeted updates to the refine API.
+- \`style.css\` — **[MODIFIED]** Appended the \`.gmail-icon-btn\` class to style the new SVG button cleanly.
+
+### Build Status: Multilingual & Email UI Overhaul Complete
+
+### Next
+- Verify multilingual transcriptions using live recorded code-mixed audio (e.g. Hindi + English).
+- Verify real-time email editing flow via the chatbox.
+
+---
+
+## 2026-04-27 -- MeetMind God Mode v12: Live Recording Revolution & Protection Protocol
+
+### Description
+Completely overhauled the Live Recording system to support online meetings (Discord, Meet, Skype). The new architecture uses dual-stream capture (`getDisplayMedia` for tab audio + `getUserMedia` for microphone), mixing them via `AudioContext` into a single `MediaRecorder` blob. Added a dual-waveform canvas visualizer and integrated the Web Speech API for real-time live captions of the user's voice during recording. Furthermore, established `FROZEN_ZONES.md` to protect 14 working modules from future AI regression.
+
+### Files Modified
+- \`FROZEN_ZONES.md\` — **[NEW]** Created the protection protocol locking down working modules.
+- \`js/recorder.js\` — **[REWRITE]** Replaced simple tab capture with complex dual-stream mixing, waveform visualization, and live Web Speech API captions.
+- \`index.html\` — **[MODIFIED]** Replaced the `input-tab-record` div with the new dual-waveform and live-caption UI.
+- \`style.css\` — **[MODIFIED]** Appended new UI classes for the recording zone (`.waveform-bar`, `.live-captions-panel`, etc.).
+- \`js/app.js\` — **[MODIFIED]** Added 3 lines to cleanup recorder state on view switch and to properly route `[LIVE_RECORDING_AUDIO]` transcripts to the `startAudioTranscription` pipeline.
+
+### Build Status: Live Recording Overhaul Complete
+
+### Next
+- User verification of the new Live Recording flow. Wait for confirmation before touching any other features.
+
+---
+
 ## 2026-04-26 -- MeetMind v11.2: Vercel Build Warning Fixes
 
 ### Description

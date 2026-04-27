@@ -151,6 +151,16 @@
       </div>
     </section>
 
+    <!-- Why We Built This -->
+    <section class="why-section">
+      <div class="container" style="max-width: 680px; text-align: center; padding: 60px 20px;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 16px;">Why We Built This</h2>
+        <p style="color: var(--color-text-secondary); line-height: 1.8; font-size: 1rem;">
+          Every college group project starts the same way — a chaotic meeting where everyone talks, nobody writes anything down, and the next day no one remembers who agreed to do what. We built MeetMind because <strong>we were those students</strong>. We wanted a tool that listens to the mess, figures out who said what, and tells each person exactly what they need to do — in seconds, not hours.
+        </p>
+      </div>
+    </section>
+
     <!-- Demo Section -->
     <section id="demo" class="demo-section">
       <div class="demo-section-header">
@@ -271,21 +281,71 @@ Speaker 2: Hi, let's start the meeting."></textarea>
 
         <!-- Record Zone -->
         <div id="input-tab-record" class="hidden">
-          <div class="recording-zone">
-            <div id="record-pulse" class="pulse-ring paused">
-              <i data-lucide="mic"></i>
+          <div class="recording-zone" id="recording-zone">
+            <!-- Pre-recording state -->
+            <div id="record-idle" class="record-idle-state">
+              <div class="record-icon-large">
+                <i data-lucide="monitor" style="width:40px;height:40px;"></i>
+              </div>
+              <h4>Record a Live Meeting</h4>
+              <p class="record-subtitle">Share your meeting tab (Google Meet, Discord, Skype, Teams) 
+                 and we'll capture everyone's audio + your microphone.</p>
+              <button id="btn-start-record" class="btn btn-primary btn-record-start" 
+                      onclick="recorder.startRecording()">
+                <i data-lucide="radio" style="width:16px;height:16px;"></i>
+                Start Recording
+              </button>
+              <p class="record-hint">
+                <i data-lucide="info" style="width:12px;height:12px;"></i>
+                Works with any browser-based meeting. Share the tab with audio enabled.
+              </p>
             </div>
-            <h4 id="record-status">Ready to Record</h4>
-            <p id="record-timer" style="margin-top: 4px; font-variant-numeric: tabular-nums;">00:00</p>
-            
-            <div style="margin-top: 24px; display: flex; gap: 12px;">
-              <button id="btn-start-record" class="btn btn-primary" onclick="recorder.startRecording()">Start</button>
-              <button id="btn-stop-record" class="btn btn-outline" onclick="recorder.stopRecording()" disabled>Stop</button>
+
+            <!-- Active recording state (hidden by default) -->
+            <div id="record-active" class="record-active-state hidden">
+              <div class="record-header-bar">
+                <div class="record-live-badge">
+                  <span class="record-dot"></span> REC
+                </div>
+                <span id="record-timer" class="record-timer">00:00</span>
+              </div>
+
+              <!-- Dual Waveform -->
+              <div class="waveform-container">
+                <div class="waveform-row">
+                  <span class="waveform-label">Meeting</span>
+                  <canvas id="waveform-tab" class="waveform-bar" width="300" height="32"></canvas>
+                  <span id="tab-status" class="stream-status active">●</span>
+                </div>
+                <div class="waveform-row">
+                  <span class="waveform-label">You</span>
+                  <canvas id="waveform-mic" class="waveform-bar" width="300" height="32"></canvas>
+                  <span id="mic-status" class="stream-status active">●</span>
+                </div>
+              </div>
+
+              <!-- Live Captions -->
+              <div class="live-captions-panel">
+                <div class="live-captions-header">
+                  <span><i data-lucide="subtitles" style="width:14px;height:14px;"></i> Your Voice (Live)</span>
+                  <span id="live-word-count" class="live-word-count">0 words</span>
+                </div>
+                <div id="live-captions-text" class="live-captions-text">
+                  <span class="caption-placeholder">Start speaking — your words appear here in real-time...</span>
+                </div>
+              </div>
+
+              <p class="record-info-text">
+                <i data-lucide="sparkles" style="width:12px;height:12px;"></i>
+                Full AI transcription of <strong>all speakers</strong> happens after you stop recording.
+              </p>
+
+              <button id="btn-stop-record" class="btn btn-outline btn-stop" 
+                      onclick="recorder.stopRecording()">
+                <i data-lucide="square" style="width:14px;height:14px;fill:currentColor;"></i>
+                Stop Recording
+              </button>
             </div>
-          </div>
-          
-          <div id="live-captions" class="live-captions hidden">
-            <!-- Captions go here -->
           </div>
         </div>
 
@@ -513,6 +573,12 @@ Speaker 2: Hi, let's start the meeting."></textarea>
       <div class="chatbox-message chatbox-system">
         <i data-lucide="sparkles" style="width:14px;height:14px;flex-shrink:0;margin-top:2px;"></i>
         <span>Ask me anything about the meeting! (e.g. "What did Ravi say about the deadline?")</span>
+      </div>
+      <div class="chatbox-suggestions" id="chatbox-suggestions">
+        <button class="chip-btn" onclick="chatbox.askSuggestion('Who has the most action items?')">Who has the most tasks?</button>
+        <button class="chip-btn" onclick="chatbox.askSuggestion('What deadlines are coming up?')">Upcoming deadlines</button>
+        <button class="chip-btn" onclick="chatbox.askSuggestion('What was left unresolved?')">Unresolved items</button>
+        <button class="chip-btn" onclick="chatbox.askSuggestion('Summarize this meeting in 2 sentences')">Quick summary</button>
       </div>
     </div>
     <div id="chatbox-apply-history" class="chatbox-history hidden"></div>

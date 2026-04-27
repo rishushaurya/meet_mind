@@ -96,6 +96,9 @@ const app = {
       }
 
       if (viewId === 'input-view') {
+        // Cleanup recorder if active
+        if (window.recorder) window.recorder.cleanup();
+        
         // Reset state for fresh session — prevent attendee/transcript bleed from demo
         this.state.attendees = [];
         this.state.transcript = '';
@@ -368,7 +371,7 @@ const app = {
     this.state.transcript = currentText;
 
     // If audio file — go to transcription step first
-    if (this.state.audioFile && currentText.includes('[AUDIO_UPLOADED:')) {
+    if (this.state.audioFile && (currentText.includes('[AUDIO_UPLOADED:') || currentText.includes('[LIVE_RECORDING_AUDIO]'))) {
       this.startAudioTranscription();
       return;
     }

@@ -48,6 +48,17 @@ const chatbox = {
     }
   },
 
+  askSuggestion(text) {
+    this.switchTab('ask');
+    const input = document.getElementById('chatbox-input');
+    if (input) {
+      input.value = text;
+    }
+    const suggestions = document.getElementById('chatbox-suggestions');
+    if (suggestions) suggestions.classList.add('hidden');
+    this.send();
+  },
+
   init() {
     const input = document.getElementById('chatbox-input');
     const sendBtn = document.getElementById('chatbox-send');

@@ -4,5 +4,8 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
-
-.vercel
+test*.js
+original_*.html
+original_*.css
+build/
+hint-report/

@@ -1902,3 +1902,267 @@ html { scroll-behavior: smooth; }
   color: var(--color-text);
   border-color: var(--color-border);
 }
+
+/* ============================================
+   Live Recording UI (God Mode v12)
+   ============================================ */
+.record-idle-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  transition: var(--transition-default);
+}
+.record-idle-state:hover {
+  border-color: var(--color-primary-muted);
+}
+.record-icon-large {
+  width: 80px;
+  height: 80px;
+  background: rgba(225, 224, 204, 0.05);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+.record-idle-state h4 {
+  font-size: 1.25rem;
+  margin-bottom: var(--space-sm);
+}
+.record-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  max-width: 400px;
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
+}
+.btn-record-start {
+  padding: 12px 24px;
+  font-size: 1.05rem;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(225, 224, 204, 0.2);
+}
+.record-hint {
+  margin-top: var(--space-lg);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.record-active-state {
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.record-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+.record-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--color-danger);
+  letter-spacing: 1px;
+}
+.record-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--color-danger);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+.record-timer {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.waveform-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  background: rgba(0,0,0,0.2);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+}
+.waveform-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.waveform-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  width: 60px;
+}
+.waveform-bar {
+  flex: 1;
+  height: 32px;
+  border-radius: 4px;
+}
+.stream-status {
+  font-size: 10px;
+  color: var(--color-success);
+}
+.stream-status.active {
+  animation: blink 2s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.live-captions-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-lg);
+}
+.live-captions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.live-captions-text {
+  padding: var(--space-md);
+  height: 120px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.caption-placeholder {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.transcript-speaker {
+  font-weight: 700;
+  color: var(--color-success);
+}
+.transcript-interim {
+  color: var(--color-text-muted);
+}
+.record-info-text {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-stop {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-danger);
+  border-color: rgba(255, 82, 82, 0.3);
+}
+.btn-stop:hover:not(:disabled) {
+  background: rgba(255, 82, 82, 0.1);
+  border-color: var(--color-danger);
+}
+
+/* ============================================
+   Source Quote — Always Visible "Proof" Mode
+   ============================================ */
+.source-quote.proof-visible {
+  cursor: default;
+  border-left: 3px solid var(--color-primary);
+  background: rgba(108, 92, 231, 0.06);
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+.quote-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+.quote-text-visible {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ============================================
+   Chatbox Suggestion Chips
+   ============================================ */
+.chatbox-suggestions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: var(--space-xs) var(--space-sm);
+  margin-bottom: var(--space-sm);
+  flex-shrink: 0;
+}
+.chip-btn {
+  background: rgba(108, 92, 231, 0.12);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: var(--transition-default);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.chip-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* ============================================
+   Person Action Buttons — Visibility Fix
+   ============================================ */
+.person-actions .btn.btn-secondary.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(108, 92, 231, 0.1);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+}
+.person-actions .btn.btn-secondary.btn-icon:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
