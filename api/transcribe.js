@@ -9,7 +9,7 @@ export const maxDuration = 60; // Vercel Hobby plan max
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '4.5mb', // Vercel Hobby hard limit
+      sizeLimit: '50mb',
     },
   },
 };
