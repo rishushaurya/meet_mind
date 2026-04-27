@@ -3,7 +3,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 
-export const maxDuration = 60;
+export const maxDuration = 60; // Vercel Hobby plan max
 export const config = {
   api: {
     bodyParser: {

@@ -1,17 +1,15 @@
 // MeetMind - Audio Transcription Endpoint
 // Primary: Groq Whisper (ultra-fast, high quota) + Groq LLM (speaker labeling)
-// Fallback: Gemini 2.5 Flash multimodal
+// Fallback: Gemini 2.0 Flash multimodal
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 
-export const maxDuration = 120;
+export const maxDuration = 60; // Vercel Hobby plan max
+
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb', // Base64 overhead for 24.5MB audio is ~33MB
+      sizeLimit: '4.5mb', // Vercel Hobby hard limit
     },
   },
 };
@@ -78,7 +76,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid session ID format.' });
     }
 
-    // Check audio size (~25MB max for Groq)
+    // Check audio size — Vercel Hobby caps at 4.5MB total body
+    // base64 has ~33% overhead, so ~3.3MB raw audio max
     const estimatedSizeMB = (audioBase64.length * 0.75) / (1024 * 1024);
     if (estimatedSizeMB > 24.5) {
       return res.status(413).json({ 
@@ -90,7 +89,6 @@ export default async function handler(req, res) {
     let finalTranscript = null;
     let speakers = [];
     let lastErrorStatus = 500;
-    let tmpFilePath = null;
 
     // ==========================================
     // 1. PRIMARY PATH: Groq Whisper
@@ -99,14 +97,17 @@ export default async function handler(req, res) {
       try {
         console.log("Attempting transcription via Groq Whisper...");
         
-        // Write base64 to temp file for Groq SDK
         const buffer = Buffer.from(audioBase64, 'base64');
         const ext = mimeType ? mimeType.split('/')[1].split(';')[0] : 'mp3';
-        tmpFilePath = path.join(os.tmpdir(), `meetmind-audio-${Date.now()}.${ext}`);
-        await fs.promises.writeFile(tmpFilePath, buffer);
+        const fileName = `meetmind-${Date.now()}.${ext}`;
+
+        // Write to /tmp (guaranteed writable on Vercel serverless)
+        const fs = await import('fs');
+        const tmpPath = `/tmp/${fileName}`;
+        fs.writeFileSync(tmpPath, buffer);
 
         const transcription = await groq.audio.transcriptions.create({
-          file: fs.createReadStream(tmpFilePath),
+          file: fs.createReadStream(tmpPath),
           model: 'whisper-large-v3-turbo',
           response_format: 'text',
           temperature: 0.0,
@@ -114,8 +115,8 @@ export default async function handler(req, res) {
         });
 
         // Clean up temp file
-        await fs.promises.unlink(tmpFilePath).catch(() => {});
-        tmpFilePath = null;
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
+
 
         if (transcription && transcription.trim().length > 20) {
           // Post-process to add speaker labels using Groq LLM
@@ -131,9 +132,6 @@ export default async function handler(req, res) {
 
       } catch (err) {
         console.error("Groq Whisper failed:", { status: err.status, message: err.message, code: err.error?.error?.code || err.error?.code });
-        if (tmpFilePath) {
-          await fs.promises.unlink(tmpFilePath).catch(() => {});
-        }
         if (err.status === 429) lastErrorStatus = 429;
         if (err.status === 401 || err.status === 403) lastErrorStatus = err.status;
       }
@@ -146,7 +144,6 @@ export default async function handler(req, res) {
       console.log("Falling back to Gemini Multimodal...");
       
       try {
-        // Use the updated gemini-2.5-flash model
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const result = await model.generateContent({
@@ -177,7 +174,6 @@ export default async function handler(req, res) {
     // 3. FINALIZE & EXTRACT
     // ==========================================
     if (!finalTranscript || finalTranscript.trim().length < 20) {
-      // If we hit a rate limit on the last attempt, return 429 explicitly
       if (lastErrorStatus === 429) {
         return res.status(429).json({ error: 'AI_RATE_LIMIT' });
       }

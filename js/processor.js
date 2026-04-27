@@ -7,9 +7,11 @@ const processor = {
 
   // ─── 1. Transcribe Audio → Text (Chunked Support) ───────────────────────
   async transcribeAudioFile(file, mimeType) {
-    // Reject files over 24MB upfront since the backend caps at 24.5MB
-    if (file.size > 24 * 1024 * 1024) {
-        throw new Error(`Audio file is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 24MB. Please compress the file or use a shorter recording.`);
+    // Vercel Hobby plan: 4.5MB body limit. Base64 adds ~33% overhead.
+    // So raw audio must be under ~3MB to fit in the request.
+    const MAX_MB = 3;
+    if (file.size > MAX_MB * 1024 * 1024) {
+        throw new Error(`Audio file is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is ${MAX_MB}MB for cloud deployment. Please use a shorter recording or paste the transcript text directly.`);
     }
 
     // Single chunk processing
