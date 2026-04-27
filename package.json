@@ -4,7 +4,6 @@
   "description": "AI meeting intelligence agent -- personalized action items for every attendee",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
     "deploy": "vercel --prod",
     "diagnostics": "node build/diagnostics.js"
   },

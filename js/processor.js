@@ -1,11 +1,76 @@
-// MeetMind - API Processor Layer (Chunk 05)
+// MeetMind - API Processor Layer (Chunk 05 — Rewrite v2)
+// Handles: transcription, analysis, and refinement API calls
 
 const processor = {
   isDemoMode: false,
   currentDemoId: null,
 
+  // ─── 1. Transcribe Audio → Text ────────────────────────────────────────
+  async transcribeAudio(audioBase64, mimeType) {
+    this.showLoadingStep(0, 'transcribe'); // "Uploading audio..."
+
+    let attempts = 0;
+    while (true) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min per request
+
+        if (attempts === 0) {
+          this.showLoadingStep(1, 'transcribe'); // "Transcribing with AI..."
+        }
+
+        const response = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audioBase64,
+            mimeType,
+            sessionId: app.state.sessionId
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // If Rate Limit, stay in the generating screen and retry persistently
+          if (response.status === 429) {
+            attempts++;
+            this.showRetryState();
+            await new Promise(r => setTimeout(r, 15000)); // Wait 15s before next attempt
+            continue;
+          }
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Transcription failed');
+        }
+
+        if (attempts === 0) {
+          this.showLoadingStep(2, 'transcribe'); // "Detecting speakers..."
+        }
+        
+        const data = await response.json();
+        
+        if (attempts === 0) {
+          this.showLoadingStep(3, 'transcribe'); // "Building transcript..."
+        }
+        return data; // { transcript, speakers, sessionId }
+
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          // Timeouts often happen due to queuing/rate limits, so retry these too
+          attempts++;
+          this.showRetryState();
+          await new Promise(r => setTimeout(r, 5000));
+          continue;
+        }
+        throw error;
+      }
+    }
+  },
+
+  // ─── 2. Process Text Transcript → Analysis JSON ────────────────────────
   async processTranscript(transcript, attendees) {
-    this.showLoadingStep(0); // "Reading transcript..."
+    this.showLoadingStep(0, 'analyze');
 
     try {
       // Demo Mode
@@ -13,8 +78,7 @@ const processor = {
         return await this.simulateDemoProcessing();
       }
 
-      // Real API Call
-      const response = await this.callAPI(transcript, attendees);
+      const response = await this.callAnalysisAPI({ transcript, attendees });
       return response;
 
     } catch (error) {
@@ -23,101 +87,174 @@ const processor = {
     }
   },
 
-  async callAPI(transcript, attendees) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+  // ─── 3. Refine Results via User Instruction ────────────────────────────
+  async refineResults(currentResults, userInstruction) {
+    let attempts = 0;
+    while (true) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    this.showLoadingStep(1); // "Identifying speakers..."
+        const response = await fetch('/api/refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentResults,
+            userInstruction,
+            sessionId: app.state.sessionId
+          }),
+          signal: controller.signal
+        });
 
-    try {
-      const response = await fetch('/api/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          transcript: transcript,
-          attendees: attendees,
-          inputMethod: app.state.inputMethod
-        }),
-        signal: controller.signal
-      });
+        clearTimeout(timeoutId);
 
-      clearTimeout(timeoutId);
-      
-      this.showLoadingStep(2); // "Extracting action items..."
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('RATE_LIMIT');
-        }
-        if (response.status === 400) {
+        if (!response.ok) {
+          if (response.status === 429) {
+            attempts++;
+            utils.showToast("High traffic, retrying...", "warning");
+            await new Promise(r => setTimeout(r, 10000));
+            continue;
+          }
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || 'BAD_REQUEST');
+          throw new Error(errData.error || 'Refinement failed');
         }
-        throw new Error('SERVER_ERROR');
-      }
 
-      this.showLoadingStep(3); // "Building your cards..."
-      
-      const data = await response.json();
-      return data;
+        return await response.json();
 
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('TIMEOUT');
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          attempts++;
+          utils.showToast("Taking longer than expected, retrying...", "warning");
+          await new Promise(r => setTimeout(r, 5000));
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
   },
 
+  // ─── Internal: Call /api/process ────────────────────────────────────────
+  async callAnalysisAPI(payload) {
+    let attempts = 0;
+    
+    while (true) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min per request
+
+        if (attempts === 0) {
+          this.showLoadingStep(1, 'analyze'); // "Identifying speakers..."
+        }
+
+        const response = await fetch('/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            sessionId: app.state.sessionId
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            attempts++;
+            this.showRetryState();
+            await new Promise(r => setTimeout(r, 15000));
+            continue;
+          }
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'SERVER_ERROR');
+        }
+
+        if (attempts === 0) {
+          this.showLoadingStep(2, 'analyze'); // "Extracting action items..."
+        }
+        
+        const data = await response.json();
+        
+        if (attempts === 0) {
+          this.showLoadingStep(3, 'analyze'); // "Building your cards..."
+        }
+        return data;
+
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          attempts++;
+          this.showRetryState();
+          await new Promise(r => setTimeout(r, 5000));
+          continue;
+        }
+        throw error;
+      }
+    }
+  },
+
+  // ─── Error Handler ─────────────────────────────────────────────────────
   handleAPIError(error) {
     console.error("API Processing Error:", error);
     
-    // Hide loading screen and go back to preview or input
     app.showView('preview-view');
     
-    if (error.message === 'TIMEOUT') {
-      utils.showToast("Request took too long. The AI might be overloaded. Try again or use Demo mode.", "error");
-    } else if (error.message === 'RATE_LIMIT') {
-      utils.showToast("Too many requests right now. Please wait a moment and try again.", "warning");
-    } else if (error.message === 'BAD_REQUEST' || error.message.includes('Minimum')) {
-      utils.showToast("Invalid transcript: " + error.message, "error");
+    const msg = error.message || '';
+    if (msg.includes('too short') || msg.includes('Minimum')) {
+      utils.showToast("Invalid transcript: " + msg, "error");
     } else {
-      utils.showToast("AI processing failed. Check your internet connection or try Demo mode.", "error");
+      utils.showToast(msg || "AI processing failed. Check your internet connection or try Demo mode.", "error");
     }
   },
 
+  // ─── Demo Simulation ───────────────────────────────────────────────────
   async simulateDemoProcessing() {
     return new Promise((resolve) => {
       let step = 0;
       const steps = setInterval(() => {
         step++;
         if (step < 4) {
-          this.showLoadingStep(step);
+          this.showLoadingStep(step, 'analyze');
         } else {
           clearInterval(steps);
           const data = window.demo.getDemoResponse(this.currentDemoId);
           resolve(data);
         }
-      }, 1000); // 1 sec per step for dramatic effect
+      }, 1000);
     });
   },
 
-  showLoadingStep(stepIndex) {
+  // ─── Loading Steps Display ─────────────────────────────────────────────
+  showLoadingStep(stepIndex, phase = 'analyze') {
     const statusEl = document.getElementById('loading-status');
     if (!statusEl) return;
     
-    const steps = [
-      "Reading transcript...",
-      "Identifying speakers...",
-      "Extracting action items...",
-      "Building your cards..."
-    ];
+    const steps = {
+      transcribe: [
+        "Uploading audio...",
+        "Transcribing with Groq...",
+        "Detecting speakers...",
+        "Building transcript..."
+      ],
+      analyze: [
+        "Reading transcript...",
+        "Analyzing with AI...",
+        "Extracting action items...",
+        "Building your cards..."
+      ]
+    };
     
-    if (steps[stepIndex]) {
-      utils.safeText(statusEl, steps[stepIndex]);
+    const phaseSteps = steps[phase] || steps.analyze;
+    if (phaseSteps[stepIndex]) {
+      utils.safeText(statusEl, phaseSteps[stepIndex]);
     }
+  },
+
+  showRetryState() {
+    const statusEl = document.getElementById('loading-status');
+    if (!statusEl) return;
+    
+    // As per user request: "when limit reached you show some red dot and says it make longer then expected"
+    statusEl.innerHTML = `<span style="color: #ef4444; margin-right: 8px;">●</span> Taking longer than expected... AI is busy, waiting to retry.`;
   }
 };
 

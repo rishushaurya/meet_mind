@@ -1,11 +1,11 @@
-// MeetMind - Utilities (Chunk 03)
+// MeetMind - Utilities (Chunk 03 — Updated v2)
 
 const utils = {
   // DOMPurify wrapper for safe HTML insertion
   sanitize(html) {
     if (!window.DOMPurify) {
       console.error("DOMPurify not loaded!");
-      return html; // Fallback, though dangerous. In prod, ensure DOMPurify is loaded.
+      return html;
     }
     return window.DOMPurify.sanitize(html);
   },
@@ -21,13 +21,26 @@ const utils = {
   validateTranscript(text) {
     if (!text || typeof text !== 'string') return false;
     const cleanText = text.trim();
-    // Must be at least 50 chars and contain some words
     return cleanText.length >= 50 && cleanText.split(/\s+/).length >= 10;
   },
 
-  // Validation: Ensure at least one attendee is provided
+  // Validation: Attendees are now OPTIONAL — this always returns true
+  // Kept for API compatibility but no longer blocks processing
   validateAttendees(namesArray) {
-    return Array.isArray(namesArray) && namesArray.length > 0;
+    return true; // Attendees are optional — AI auto-detects
+  },
+
+  // Generate unique session ID for request isolation
+  generateSessionId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback for older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   },
 
   // Generate unique ID for DOM elements
@@ -61,7 +74,6 @@ const utils = {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type} fade-in`;
     
-    // Icon based on type
     let icon = 'info';
     if (type === 'success') icon = 'check-circle';
     if (type === 'error') icon = 'alert-circle';
@@ -74,23 +86,20 @@ const utils = {
     
     container.appendChild(toast);
     
-    // Initialize Lucide icon for the new toast
     if (window.lucide) {
       window.lucide.createIcons({ root: toast });
     }
 
-    // Auto-remove after 3 seconds
     setTimeout(() => {
       toast.classList.remove('fade-in');
       toast.classList.add('fade-out');
-      setTimeout(() => toast.remove(), 300); // Wait for fade-out animation
-    }, 3000);
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
   },
 
-  // Format relative dates to readable format
+  // Format relative dates
   formatDate(dateStr) {
     if (!dateStr || dateStr.toLowerCase() === 'null') return null;
-    // In a real app, we might parse "by Friday", but for now just return the string securely.
     return this.sanitize(dateStr);
   }
 };

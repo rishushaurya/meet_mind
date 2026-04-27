@@ -621,7 +621,6 @@ body {
    Summary Card (WorkoutSummaryCard adaptation)
    ============================================ */
 .summary-card {
-  max-width: 450px;
   width: 100%;
   padding: var(--space-lg);
 }
@@ -843,30 +842,28 @@ body {
 }
 
 .tab-pane {
-  position: absolute;
-  inset: var(--space-md);
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: var(--space-md);
   opacity: 0;
-  visibility: hidden;
-  transform: scale(0.95) translateX(-10px);
+  transform: translateY(10px);
   filter: blur(4px);
-  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+  animation: paneEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes paneEnter {
+  from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
 @media (min-width: 480px) {
   .tab-pane {
-    flex-direction: row;
+    flex-direction: column;
   }
 }
 
 .tab-pane.active {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1) translateX(0);
-  filter: blur(0);
-  z-index: 2;
+  display: flex;
 }
 
 .tab-img {
@@ -1148,6 +1145,569 @@ body {
   border-top-color: var(--color-primary);
   animation: spin 1s ease-in-out infinite;
   margin-bottom: var(--space-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Dashboard Dynamic Components (dashboard.js)
+   ============================================ */
+.person-card {
+  background: rgba(17, 17, 17, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.person-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.person-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+.person-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+.avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.avatar-large {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.action-items-list {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.action-item {
+  padding: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-default);
+}
+.action-item.completed {
+  opacity: 0.5;
+}
+.action-item.completed .task-text {
+  text-decoration: line-through;
+}
+.action-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+.action-content {
+  flex: 1;
+}
+.task-text {
+  font-size: 0.95rem;
+  margin-bottom: var(--space-xs);
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+.task-meta .badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  border: 1px solid;
+}
+.deadline, .dependency {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+.deadline i, .dependency i {
+  width: 12px;
+  height: 12px;
+}
+.custom-checkbox {
+  position: relative;
+  cursor: pointer;
+  padding-top: 2px;
+}
+.custom-checkbox input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-success);
+}
+.source-quote {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(225, 224, 204, 0.05);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border-left: 2px solid var(--color-primary-muted);
+}
+.quote-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.quote-toggle i {
+  width: 12px;
+  height: 12px;
+}
+.quote-text {
+  display: none;
+  margin-top: var(--space-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+}
+.source-quote.expanded .quote-text {
+  display: block;
+}
+.empty-state {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-default);
+}
+.btn-icon:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.btn-icon i {
+  width: 16px;
+  height: 16px;
+}
+.btn-secondary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: var(--transition-default);
+}
+.btn-secondary:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Smooth scroll */
+html { scroll-behavior: smooth; }
+
+/* ============================================
+   Floating Paths Background
+   ============================================ */
+.floating-paths-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  color: var(--color-text);
+  overflow: hidden;
+}
+.paths-svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+@keyframes pathFlow {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -2; }
+}
+#app-container > *:not(.floating-paths-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   How It Works Section
+   ============================================ */
+.how-section {
+  padding: 120px var(--space-xl) 100px;
+  background: var(--color-bg);
+  position: relative;
+}
+.how-section-header {
+  text-align: center;
+  margin-bottom: 72px;
+}
+.how-section-header h2 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+.how-section-header p {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-xl);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.step-card {
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  transition: var(--transition-default);
+}
+.step-card:hover {
+  border-color: var(--color-primary-muted);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin-bottom: var(--space-md);
+}
+.step-icon {
+  margin-bottom: var(--space-sm);
+  color: var(--color-primary-muted);
+}
+.step-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  color: var(--color-text);
+}
+.step-card p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================
+   Demo Section (Landing Page)
+   ============================================ */
+.demo-section {
+  padding: 80px var(--space-xl) 120px;
+  background: var(--color-bg);
+  position: relative;
+}
+.demo-section-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+.demo-section-header h2 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+.demo-section-header p {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+.demo-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-xl);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.demo-card {
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-default);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.demo-card:hover {
+  border-color: var(--color-primary-muted);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.demo-card-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(225, 224, 204, 0.15);
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+.demo-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+.demo-card p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+}
+.demo-card-meta {
+  display: flex;
+  gap: var(--space-md);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.demo-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Footer on landing page */
+.landing-footer {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ============================================
+   "Generating..." Loading Animation
+   ============================================ */
+.generating-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.generating-text {
+  display: flex;
+  align-items: baseline;
+  user-select: none;
+}
+
+.gen-letter {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--color-primary);
+  opacity: 0.3;
+  animation: genWave 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+.gen-letter.gen-dots {
+  font-size: clamp(2rem, 6vw, 4rem);
+  margin-left: 2px;
+}
+
+@keyframes genWave {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-8px); }
+}
+
+.generating-bar {
+  width: 280px;
+  max-width: 80vw;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.generating-bar-fill {
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: var(--radius-full);
+  animation: genBar 1.8s ease-in-out infinite;
+}
+
+@keyframes genBar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ============================================
+   Chatbox — Post-AI Correction
+   ============================================ */
+.chatbox-container {
+  margin-top: var(--space-xl);
+  padding: var(--space-md);
+}
+
+.chatbox-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+  color: var(--color-text);
+}
+
+.chatbox-history {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm);
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--radius-md);
+}
+
+.chatbox-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+
+.chatbox-user {
+  background: rgba(225, 224, 204, 0.08);
+  color: var(--color-primary);
+}
+
+.chatbox-system {
+  color: var(--color-success);
+}
+
+.chatbox-error {
+  color: var(--color-danger);
+}
+
+.chatbox-input-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.chatbox-input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px var(--space-md);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  transition: var(--transition-default);
+}
+
+.chatbox-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.chatbox-input:disabled {
+  opacity: 0.5;
+}
+
+.chatbox-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: black;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-default);
+  flex-shrink: 0;
+}
+
+.chatbox-send-btn:hover {
+  background: var(--color-primary-muted);
+}
+
+.chatbox-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatbox-footer {
+  text-align: right;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.chatbox-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: black;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 @keyframes spin {

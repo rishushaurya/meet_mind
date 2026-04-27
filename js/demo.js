@@ -1,12 +1,12 @@
 // MeetMind - Demo Transcripts and Mock Responses (Chunk 05)
 
 const demoData = {
-  // Demo 1: College Hackathon Planning
+  // Demo 1: College Project Planning
   demo1: {
     id: 'demo1',
-    title: 'Hackathon Planning Sync',
+    title: 'Project Planning Sync',
     attendees: ['Rahul', 'Priya', 'Amit', 'Sneha'],
-    transcript: `Rahul: Alright, so we need to finalize our hackathon project. I think I should handle the backend API since I've been working with Node.js.
+    transcript: `Rahul: Alright, so we need to finalize our project. I think I should handle the backend API since I've been working with Node.js.
 Priya: That works. I'll take the frontend -- I can use React or maybe just vanilla JS to keep it simple.
 Amit: I'll build the ML model. I need the dataset by Wednesday though. Rahul, can you set up the data pipeline?
 Sneha: I'll handle the presentation and the README. But we need to decide which API to use for the AI part.
@@ -19,7 +19,7 @@ Priya: One more thing -- should we deploy on Vercel or Render?
 Sneha: Vercel is easier. Rahul, can you handle deployment too?
 Rahul: Sure, I'll set up Vercel after the backend is ready.`,
     response: {
-      "meeting_summary": "The team finalized roles for their hackathon project. Rahul will handle the backend and deployment, Priya will build the frontend, Amit will develop the ML model, and Sneha is responsible for the presentation. They agreed to use the Gemini API and a Kaggle dataset to save time.",
+      "meeting_summary": "The team finalized roles for their project. Rahul will handle the backend and deployment, Priya will build the frontend, Amit will develop the ML model, and Sneha is responsible for the presentation. They agreed to use the Gemini API and a Kaggle dataset to save time.",
       "meeting_type": "brainstorm",
       "health_score": {
         "score": 8,
@@ -32,7 +32,7 @@ Rahul: Sure, I'll set up Vercel after the backend is ready.`,
       ],
       "unresolved_questions": [],
       "topics_not_discussed": [
-        "Specific hackathon problem statement to target",
+        "Specific project scope to target",
         "Design mockups or UI theme"
       ],
       "attendees": [

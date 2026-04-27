@@ -1,27 +1,19 @@
 // MeetMind - Live Recording Logic (Chunk 04)
 
 const recorder = {
-  recognition: null,
+  mediaRecorder: null,
+  audioChunks: [],
   isRecording: false,
-  transcriptParts: [],
   timerInterval: null,
   startTime: 0,
+  stream: null,
   
-  // Check browser support
   init() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
+    // Check if getDisplayMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       this.showUnsupportedNotice();
       return false;
     }
-
-    this.recognition = new SpeechRecognition();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = 'en-US';
-
-    this.wireEvents();
     return true;
   },
 
@@ -34,97 +26,80 @@ const recorder = {
         </div>
         <h4>Browser Unsupported</h4>
         <p style="color: var(--color-text-secondary); margin-top: 8px;">
-          Live recording requires Chrome or Edge. Please use the Paste or Upload tabs instead.
+          System audio recording requires Chrome or Edge. Please use the Paste or Upload tabs instead.
         </p>
       `;
       if (window.lucide) window.lucide.createIcons();
     }
   },
 
-  wireEvents() {
-    if (!this.recognition) return;
+  async startRecording() {
+    try {
+      // Request screen sharing with audio
+      this.stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
 
-    this.recognition.onstart = () => {
+      // Check if user actually shared audio
+      const audioTracks = this.stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        utils.showToast('You must share a tab WITH AUDIO enabled.', 'error');
+        this.stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      this.audioChunks = [];
+      this.mediaRecorder = new MediaRecorder(this.stream, { mimeType: 'audio/webm' });
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        this.processRecordedAudio(audioBlob);
+      };
+
+      // Stop recording if user clicks "Stop Sharing" in browser UI
+      this.stream.getVideoTracks()[0].onended = () => {
+        if (this.isRecording) {
+          this.stopRecording();
+        }
+      };
+
+      this.mediaRecorder.start();
       this.isRecording = true;
-      this.transcriptParts = [];
-      
+
       // Update UI
-      document.getElementById('record-status').textContent = 'Recording...';
+      document.getElementById('record-status').textContent = 'Recording System Audio...';
       document.getElementById('record-pulse').classList.remove('paused');
       document.getElementById('btn-start-record').disabled = true;
       document.getElementById('btn-stop-record').disabled = false;
       document.getElementById('live-captions').classList.remove('hidden');
-      document.getElementById('live-captions').innerHTML = '';
+      document.getElementById('live-captions').innerHTML = '<span style="color: var(--color-text-secondary)">Capturing tab audio. Please keep the meeting tab active.</span>';
       
       this.startTimer();
-      utils.showToast('Microphone activated. Start speaking.', 'success');
-    };
+      utils.showToast('Recording started. Audio is being captured.', 'success');
 
-    this.recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-
-      if (finalTranscript) {
-        // Add final chunk to our stored transcript array
-        const text = finalTranscript.trim() + ' ';
-        this.transcriptParts.push(text);
-        
-        // Append to UI
-        const captionsEl = document.getElementById('live-captions');
-        const finalSpan = document.createElement('span');
-        finalSpan.style.color = 'var(--color-text)';
-        utils.safeText(finalSpan, text);
-        captionsEl.appendChild(finalSpan);
-      }
-
-      // We could display interim results if we want, but keeping it simple for now
-    };
-
-    this.recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      if (event.error === 'not-allowed') {
-        utils.showToast('Microphone access denied. Please check your browser permissions.', 'error');
-        this.stopRecording();
-      }
-    };
-
-    this.recognition.onend = () => {
-      if (this.isRecording) {
-        // If it stopped automatically but we still think we are recording, restart it
-        // (SpeechRecognition sometimes cuts out after silence)
-        try {
-          this.recognition.start();
-        } catch(e) {
-          this.stopRecording();
-        }
-      }
-    };
-  },
-
-  startRecording() {
-    if (!this.recognition) return;
-    try {
-      this.recognition.start();
-    } catch(e) {
+    } catch (e) {
       console.error(e);
-      utils.showToast('Could not start recording.', 'error');
+      utils.showToast('Failed to start recording. Make sure to share a tab and enable audio.', 'error');
     }
   },
 
   stopRecording() {
-    this.isRecording = false;
-    if (this.recognition) {
-      this.recognition.stop();
-    }
+    if (!this.isRecording || !this.mediaRecorder) return;
     
+    this.mediaRecorder.stop();
+    this.stream.getTracks().forEach(track => track.stop());
+    this.isRecording = false;
     this.stopTimer();
 
     // Update UI
@@ -132,21 +107,27 @@ const recorder = {
     document.getElementById('record-pulse').classList.add('paused');
     document.getElementById('btn-start-record').disabled = false;
     document.getElementById('btn-stop-record').disabled = true;
+  },
 
-    // Send the captured text to app state if there is any
-    const fullText = this.transcriptParts.join(' ').trim();
-    if (fullText.length > 0) {
-      app.state.transcript = fullText;
-      app.state.inputMethod = 'record';
+  processRecordedAudio(blob) {
+    app.state.inputMethod = 'record';
+    app.state.transcript = '[LIVE_RECORDING_AUDIO]';
+    app.state.audioFile = new File([blob], 'recording.webm', { type: 'audio/webm' });
+    app.state.audioMimeType = 'audio/webm';
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64String = e.target.result.split(',')[1];
+      app.state.audioBase64 = base64String;
       utils.showToast('Recording saved. Add attendees and click Process Meeting.', 'success');
       
-      // Also update the paste input box so users can easily edit there too
+      // Update paste input to show it's recorded
       const pasteInput = document.getElementById('paste-input');
       if (pasteInput) {
-        pasteInput.value = fullText;
-        pasteInput.dispatchEvent(new Event('input')); // trigger word count
+        pasteInput.value = '[System Audio Recorded Successfully]';
       }
-    }
+    };
+    reader.readAsDataURL(blob);
   },
 
   startTimer() {
@@ -158,8 +139,8 @@ const recorder = {
       const seconds = Math.floor((elapsed / 1000) % 60);
       const minutes = Math.floor((elapsed / 1000) / 60);
       
-      const formatTime = (val) => val < 10 ? `0${val}` : val;
-      timerEl.textContent = `${formatTime(minutes)}:${formatTime(seconds)}`;
+      const formatTime = (val) => val < 10 ? \`0\${val}\` : val;
+      timerEl.textContent = \`\${formatTime(minutes)}:\${formatTime(seconds)}\`;
     }, 1000);
   },
 

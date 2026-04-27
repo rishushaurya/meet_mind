@@ -31,46 +31,128 @@
 </head>
 <body>
 
-  <!-- Landing Page (PrismaHero adaptation) -->
-  <section id="landing-view" class="hero-section">
-    <div class="hero-wrapper">
-      <video autoplay loop muted playsinline class="hero-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4"></video>
-      <div class="hero-noise noise-overlay"></div>
-      <div class="hero-gradient"></div>
+  <!-- Landing Page -->
+  <div id="landing-view">
+    <section class="hero-section">
+      <div class="hero-wrapper">
+        <video autoplay loop muted playsinline class="hero-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4"></video>
+        <div class="hero-noise noise-overlay"></div>
+        <div class="hero-gradient"></div>
 
-      <nav class="hero-nav">
-        <div class="hero-nav-inner">
-          <a href="#how-it-works">How it works</a>
-          <a href="#demo">Demo</a>
-          <a href="#github">GitHub</a>
-        </div>
-      </nav>
+        <nav class="hero-nav">
+          <div class="hero-nav-inner">
+            <a href="#how-it-works">How it works</a>
+            <a href="#demo">Demo</a>
+            <a href="https://github.com/rishushaurya" target="_blank" rel="noopener noreferrer">GitHub</a>
+          </div>
+        </nav>
 
-      <div class="hero-content">
-        <div>
-          <h1 class="hero-title">
-            <span class="word-pull-up" id="hero-title-text">
-              <span>MeetMind<span class="asterisk">*</span></span>
-            </span>
-          </h1>
-        </div>
-        <div>
-          <p class="hero-text fade-in" style="animation-delay: 0.5s;">
-            MeetMind is an AI that attends your meetings so you don't have to remember them. It extracts personalized action items, priorities, and deadlines for every single attendee within seconds.
-          </p>
-          <button class="hero-btn fade-in" style="animation-delay: 0.7s;" onclick="app.showView('input-view')">
-            Get started
-            <span class="hero-btn-icon">
-              <i data-lucide="arrow-right"></i>
-            </span>
-          </button>
+        <div class="hero-content">
+          <div>
+            <h1 class="hero-title">
+              <span class="word-pull-up" id="hero-title-text">
+                <span>MeetMind<span class="asterisk">*</span></span>
+              </span>
+            </h1>
+          </div>
+          <div>
+            <p class="hero-text fade-in" style="animation-delay: 0.5s;">
+              MeetMind is an AI that attends your meetings so you don't have to remember them. It extracts personalized action items, priorities, and deadlines for every single attendee within seconds.
+            </p>
+            <button class="hero-btn fade-in" style="animation-delay: 0.7s;" onclick="app.showView('input-view')">
+              Get started
+              <span class="hero-btn-icon">
+                <i data-lucide="arrow-right"></i>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-section">
+      <div class="how-section-header">
+        <h2>How It Works</h2>
+        <p>From raw meeting audio to personalized action items in four simple steps.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-icon"><i data-lucide="file-text" style="width:28px;height:28px;"></i></div>
+          <h3>Input Your Meeting</h3>
+          <p>Paste a transcript, upload an audio/video file, or record live directly in your browser using the Web Speech API.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-icon"><i data-lucide="brain" style="width:28px;height:28px;"></i></div>
+          <h3>AI Analyzes</h3>
+          <p>Gemini 2.0 Flash processes your transcript, attributes every statement to a speaker, and extracts action items with source quotes.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-icon"><i data-lucide="layout-dashboard" style="width:28px;height:28px;"></i></div>
+          <h3>Personalized Cards</h3>
+          <p>Each attendee gets their own card with tasks, priorities, deadlines, and dependencies. Nothing generic — everything attributed.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <div class="step-icon"><i data-lucide="share-2" style="width:28px;height:28px;"></i></div>
+          <h3>Export & Share</h3>
+          <p>Copy to clipboard, share via WhatsApp with markdown formatting, export as PDF, or preview follow-up emails per attendee.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section id="demo" class="demo-section">
+      <div class="demo-section-header">
+        <h2>Try a Demo</h2>
+        <p>Click any scenario below to see MeetMind in action — no API key required.</p>
+      </div>
+      <div class="demo-cards-grid">
+        <div class="demo-card" onclick="app.loadDemo('demo1')">
+          <span class="demo-card-badge">Brainstorm</span>
+          <h3>Project Planning Sync</h3>
+          <p>Four students dividing roles for a group project — backend, frontend, ML, and presentation.</p>
+          <div class="demo-card-meta">
+            <span><i data-lucide="users" style="width:14px;height:14px;"></i> 4 attendees</span>
+            <span><i data-lucide="clock" style="width:14px;height:14px;"></i> 8 min</span>
+            <span><i data-lucide="check-circle-2" style="width:14px;height:14px;"></i> 9 tasks</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="app.loadDemo('demo2')">
+          <span class="demo-card-badge">Standup</span>
+          <h3>Startup Standup</h3>
+          <p>Three founders discussing a Stripe blocker, paused marketing ads, and landing page copy updates.</p>
+          <div class="demo-card-meta">
+            <span><i data-lucide="users" style="width:14px;height:14px;"></i> 3 attendees</span>
+            <span><i data-lucide="clock" style="width:14px;height:14px;"></i> 12 min</span>
+            <span><i data-lucide="check-circle-2" style="width:14px;height:14px;"></i> 4 tasks</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="app.loadDemo('demo3')">
+          <span class="demo-card-badge">Check-in</span>
+          <h3>Internship Check-in</h3>
+          <p>A manager and intern discussing onboarding, GitHub access, bug tickets, and timesheet submission.</p>
+          <div class="demo-card-meta">
+            <span><i data-lucide="users" style="width:14px;height:14px;"></i> 2 attendees</span>
+            <span><i data-lucide="clock" style="width:14px;height:14px;"></i> 5 min</span>
+            <span><i data-lucide="check-circle-2" style="width:14px;height:14px;"></i> 6 tasks</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="landing-footer">
+      Built with ❤️ by MeetMind · <a href="https://github.com/rishushaurya" target="_blank" style="color: var(--color-primary); text-decoration: none;">GitHub</a>
+    </footer>
+  </div>
 
   <!-- Main App Container for other views -->
   <div id="app-container" class="container hidden">
+    <!-- Floating Paths Background (all views except landing) -->
+    <div class="floating-paths-bg" id="floating-paths-bg"></div>
     
     <!-- Header for App -->
     <header style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) 0; margin-bottom: var(--space-xl);">
@@ -107,9 +189,9 @@
             <i data-lucide="upload"></i>
             <div style="margin-top: 16px;">
               <label for="file-upload">Drag and drop or choose file to upload</label>
-              <input id="file-upload" type="file" accept=".txt,.srt,.mp3,.mp4,.wav" onchange="app.handleFileSelect(event)">
+              <input id="file-upload" type="file" accept=".txt,.srt,.mp3,.mp4,.wav,.webm" onchange="app.handleFileSelect(event)">
             </div>
-            <p class="upload-hint" style="margin-top: 8px;">Recommended max. size: 25MB. Accepted: TXT, SRT, MP3, WAV</p>
+            <p class="upload-hint" style="margin-top: 8px;">Max size: 200MB. Accepted: TXT, SRT, MP3, WAV, MP4, WEBM</p>
           </div>
 
           <!-- Selected File (Hidden by default) -->
@@ -163,14 +245,14 @@ Speaker 2: Hi, let's start the meeting."></textarea>
 
         <!-- Attendee Chips Input -->
         <div class="attendee-input-container">
-          <h4 style="margin-bottom: 8px; font-size: 0.875rem;">Attendees (Required)</h4>
-          <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 12px;">Press Enter or comma to add. We need this to attribute action items correctly.</p>
+          <h4 style="margin-bottom: 8px; font-size: 0.875rem;">Attendees <span style="color: var(--color-text-muted); font-weight: 400;">(Optional)</span></h4>
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 12px;">Press Enter or comma to add names. Leave empty and AI will auto-detect speakers from the transcript.</p>
           
           <div class="chips-wrapper" id="attendee-chips">
             <!-- Chips will be inserted here -->
           </div>
           
-          <input type="text" id="attendee-input" class="chip-input" placeholder="Type a name and press Enter...">
+          <input type="text" id="attendee-input" class="chip-input" placeholder="Type a name and press Enter (or leave empty)...">
         </div>
 
         <!-- Action Buttons -->
@@ -190,7 +272,7 @@ Speaker 2: Hi, let's start the meeting."></textarea>
             <div class="showcase-content">
               <div>
                 <div class="showcase-title-row">
-                  <h3 class="showcase-title">Hackathon Planning Sync</h3>
+                  <h3 class="showcase-title">Project Planning Sync</h3>
                   <i data-lucide="arrow-up-right" class="showcase-icon"></i>
                 </div>
                 <p class="showcase-desc">4 Attendees. Planning architecture and tasks.</p>
@@ -236,16 +318,15 @@ Speaker 2: Hi, let's start the meeting."></textarea>
     <!-- Loading View -->
     <section id="loading-view" class="hidden">
       <div class="loading-view">
-        <div class="spinner"></div>
-        <h2 style="font-size: 1.5rem; margin-bottom: 8px;">MeetMind is thinking...</h2>
-        <p style="color: var(--color-text-secondary);" id="loading-status">Analyzing transcript and extracting action items.</p>
-        
-        <!-- Animated loading dots -->
-        <div style="margin-top: 24px; display: flex; gap: 8px; align-items: center; justify-content: center;">
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate;"></div>
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate 0.2s;"></div>
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); animation: pulse 1s infinite alternate 0.4s;"></div>
+        <div class="generating-wrapper">
+          <div class="generating-text" aria-label="Generating">
+            <span class="gen-letter" style="animation-delay:0s;">G</span><span class="gen-letter" style="animation-delay:0.08s;">e</span><span class="gen-letter" style="animation-delay:0.16s;">n</span><span class="gen-letter" style="animation-delay:0.24s;">e</span><span class="gen-letter" style="animation-delay:0.32s;">r</span><span class="gen-letter" style="animation-delay:0.4s;">a</span><span class="gen-letter" style="animation-delay:0.48s;">t</span><span class="gen-letter" style="animation-delay:0.56s;">i</span><span class="gen-letter" style="animation-delay:0.64s;">n</span><span class="gen-letter" style="animation-delay:0.72s;">g</span><span class="gen-letter gen-dots" style="animation-delay:0.8s;">.</span><span class="gen-letter gen-dots" style="animation-delay:0.88s;">.</span><span class="gen-letter gen-dots" style="animation-delay:0.96s;">.</span>
+          </div>
+          <div class="generating-bar">
+            <div class="generating-bar-fill"></div>
+          </div>
         </div>
+        <p style="color: var(--color-text-secondary); margin-top: 24px;" id="loading-status">Analyzing transcript and extracting action items.</p>
       </div>
     </section>
 
@@ -258,6 +339,22 @@ Speaker 2: Hi, let's start the meeting."></textarea>
         </button>
       </div>
 
+      <!-- Top Stats Bar -->
+      <div style="display: flex; gap: var(--space-md); margin-bottom: var(--space-xl); flex-wrap: wrap;">
+        <div class="glass-panel" style="flex: 1; min-width: 120px; padding: var(--space-md); text-align: center;">
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Actions</p>
+          <p style="font-size: 1.5rem; font-weight: 700;" id="stat-actions">0</p>
+        </div>
+        <div class="glass-panel" style="flex: 1; min-width: 120px; padding: var(--space-md); text-align: center;">
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Speakers</p>
+          <p style="font-size: 1.5rem; font-weight: 700;" id="stat-speakers">0</p>
+        </div>
+        <div class="glass-panel" style="flex: 1; min-width: 120px; padding: var(--space-md); text-align: center;">
+          <p style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Type</p>
+          <p style="font-size: 1.5rem; font-weight: 700; text-transform: capitalize;" id="stat-type">General</p>
+        </div>
+      </div>
+
       <div class="dashboard-grid">
         <!-- Left Col: Summary & Charts -->
         <div style="display: flex; flex-direction: column; gap: var(--space-xl);">
@@ -267,9 +364,8 @@ Speaker 2: Hi, let's start the meeting."></textarea>
             <header class="summary-header">
               <div>
                 <h2>Meeting Summary</h2>
-                <p>Hackathon Planning Sync</p>
               </div>
-              <div class="summary-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div class="summary-actions action-bar" style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button class="action-btn" onclick="exports.copyAll()" title="Copy All"><i data-lucide="copy"></i></button>
                 <button class="action-btn" onclick="exports.copyWhatsApp()" title="Share via WhatsApp"><i data-lucide="share-2"></i></button>
                 <button class="action-btn" onclick="exports.exportPDF()" title="Export PDF"><i data-lucide="download"></i></button>
@@ -277,138 +373,80 @@ Speaker 2: Hi, let's start the meeting."></textarea>
               </div>
             </header>
 
+            <!-- Health Score -->
             <div class="summary-hero">
-              <div class="summary-hero-content">
-                <h3 style="color: var(--color-primary);">Score: 8/10</h3>
-                <p>Productive planning session with clear assignments.</p>
-                
-                <div class="summary-metrics">
-                  <div class="metric">
-                    <i data-lucide="users"></i>
-                    <div>
-                      <p class="metric-label">ATTENDEES</p>
-                      <p class="metric-val">4</p>
-                    </div>
-                  </div>
-                  <div class="metric">
-                    <i data-lucide="check-circle-2"></i>
-                    <div>
-                      <p class="metric-label">TASKS</p>
-                      <p class="metric-val">12</p>
-                    </div>
-                  </div>
+              <div class="summary-hero-content" style="display: flex; align-items: center; gap: var(--space-xl); flex-wrap: wrap;">
+                <div style="position: relative; width: 120px; height: 120px;">
+                  <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="var(--color-border)" stroke-width="6"/>
+                    <circle id="health-score-circle" cx="50" cy="50" r="45" fill="none" stroke="var(--color-success)" stroke-width="6" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round"/>
+                  </svg>
+                  <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;" id="health-score-value">0/10</div>
+                </div>
+                <div style="flex: 1;">
+                  <p id="meeting-summary-text" style="line-height: 1.6; color: var(--color-text-secondary);"></p>
+                  <p id="health-reasoning" style="margin-top: var(--space-sm); font-size: 0.85rem; color: var(--color-text-muted); font-style: italic;"></p>
                 </div>
               </div>
             </div>
 
-            <ul class="stat-list">
-              <li class="stat-item">
-                <div class="stat-left">
-                  <div class="stat-icon" style="background: rgba(108, 92, 231, 0.2); color: #8A7BFF;">
-                    <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
-                  </div>
-                  <span class="stat-label">Decisions Made</span>
-                </div>
-                <p class="stat-val">3</p>
-              </li>
-              <li class="stat-item">
-                <div class="stat-left">
-                  <div class="stat-icon" style="background: rgba(255, 82, 82, 0.2); color: #FF8A8A;">
-                    <i data-lucide="help-circle" style="width: 18px; height: 18px;"></i>
-                  </div>
-                  <span class="stat-label">Unresolved Questions</span>
-                </div>
-                <p class="stat-val">1</p>
-              </li>
-            </ul>
+            <!-- Decisions / Questions / Not Discussed -->
+            <div style="display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-lg);">
+              <div>
+                <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-sm);"><i data-lucide="check-square" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"></i>Decisions Made</h4>
+                <ul id="decisions-list" style="list-style: disc; padding-left: 20px; color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.8;"><li style="color: var(--color-text-secondary); list-style: none;">None</li></ul>
+              </div>
+              <div>
+                <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-sm);"><i data-lucide="help-circle" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"></i>Unresolved Questions</h4>
+                <ul id="questions-list" style="list-style: disc; padding-left: 20px; color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.8;"><li style="color: var(--color-text-secondary); list-style: none;">None</li></ul>
+              </div>
+              <div>
+                <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-sm);"><i data-lucide="alert-triangle" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"></i>Topics Not Discussed</h4>
+                <ul id="not-discussed-list" style="list-style: disc; padding-left: 20px; color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.8;"><li style="color: var(--color-text-secondary); list-style: none;">None</li></ul>
+              </div>
+            </div>
           </div>
 
           <!-- Chart Container -->
-          <div class="chart-container">
+          <div class="chart-container glass-panel" style="padding: var(--space-lg);">
             <div class="chart-header">
-              <h3>Talk Time Percentage</h3>
+              <h3>Talk Time Distribution</h3>
             </div>
-            <div class="chart-wrapper">
+            <div class="chart-wrapper" style="height: 280px;">
               <canvas id="talkTimeChart"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Right Col: Person Cards (Animated Tabs) -->
+        <!-- Right Col: Person Cards (Dynamic Tabs) -->
         <div>
           <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-md);">Attendee Action Items</h3>
           <div class="tabs-container">
             <div class="tabs-nav" id="person-tabs">
-              <button class="tab-btn active" onclick="app.switchPersonTab('person-1', this)">
-                <div class="tab-btn-bg"></div>
-                <span>Rahul</span>
-              </button>
-              <button class="tab-btn" onclick="app.switchPersonTab('person-2', this)">
-                <div class="tab-btn-bg"></div>
-                <span>Priya</span>
-              </button>
-              <button class="tab-btn" onclick="app.switchPersonTab('person-3', this)">
-                <div class="tab-btn-bg"></div>
-                <span>Amit</span>
-              </button>
+              <!-- Tabs rendered dynamically by dashboard.js -->
             </div>
-
-            <div class="tabs-content">
-              <!-- Person 1 -->
-              <div id="person-1" class="tab-pane active">
-                <div class="tab-info">
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <h2>Rahul</h2>
-                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Backend</span>
-                  </div>
-                  <p>3 Action Items • 1 Deadline</p>
-                  
-                  <ul class="action-list">
-                    <li class="action-item">
-                      Setup Vercel serverless function
-                      <div style="font-size: 0.75rem; color: var(--color-danger); margin-top: 4px;">Due: Thursday</div>
-                    </li>
-                    <li class="action-item">Integrate Gemini API</li>
-                    <li class="action-item">Write DOMPurify sanitization wrapper</li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Person 2 -->
-              <div id="person-2" class="tab-pane">
-                <div class="tab-info">
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <h2>Priya</h2>
-                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Frontend</span>
-                  </div>
-                  <p>2 Action Items • 0 Deadlines</p>
-                  
-                  <ul class="action-list">
-                    <li class="action-item">Build UI components based on React references</li>
-                    <li class="action-item">Implement Chart.js visualizations</li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Person 3 -->
-              <div id="person-3" class="tab-pane">
-                <div class="tab-info">
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <h2>Amit</h2>
-                    <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px;">Design</span>
-                  </div>
-                  <p>1 Action Item • 1 Dependency</p>
-                  
-                  <ul class="action-list">
-                    <li class="action-item">
-                      Create CSS design system
-                      <div style="font-size: 0.75rem; color: var(--color-warning); margin-top: 4px;">Depends on: Priya's HTML structure</div>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+            <div id="person-panes">
+              <!-- Panes rendered dynamically by dashboard.js -->
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Chatbox for post-AI corrections -->
+      <div class="chatbox-container glass-panel">
+        <div class="chatbox-header">
+          <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--color-accent);"></i>
+          <span>Refine Results</span>
+        </div>
+        <div id="chatbox-history" class="chatbox-history hidden"></div>
+        <div class="chatbox-input-row">
+          <input type="text" id="chatbox-input" class="chatbox-input" placeholder='e.g. "Move task X from Ravi to Amit" or "Change deadline to Friday"' maxlength="500">
+          <button id="chatbox-send" class="chatbox-send-btn" title="Send">
+            <i data-lucide="send" style="width:16px;height:16px;"></i>
+          </button>
+        </div>
+        <div class="chatbox-footer">
+          <span id="chatbox-counter">0/500</span>
         </div>
       </div>
     </section>
@@ -429,6 +467,8 @@ Speaker 2: Hi, let's start the meeting."></textarea>
   <script src="js/dashboard.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/chatbox.js"></script>
+  <script src="js/paths.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

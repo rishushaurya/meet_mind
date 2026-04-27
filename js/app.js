@@ -1,14 +1,20 @@
-// MeetMind - Main Application Logic
-// Chunks 02, 03, 04
+// MeetMind - Main Application Logic (Rewrite v2)
+// New: 2-step audio flow, session isolation, optional attendees
 
 const app = {
   state: {
     transcript: '',
     attendees: [],
-    inputMethod: 'upload', // default
+    inputMethod: 'upload',
+    audioFile: null,
+    audioMimeType: null,
+    audioBase64: null,
+    sessionId: null,
+    result: null,
+    isTranscribing: false
   },
 
-  // Initialization
+  // ─── Initialization ────────────────────────────────────────────────────
   init() {
     this.initLucideIcons();
     this.initHeroAnimations();
@@ -18,35 +24,30 @@ const app = {
     this.initAttendeeChips();
     this.initPasteCounter();
 
-    // Check localStorage for theme
+    if (window.floatingPaths) window.floatingPaths.init();
+
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       document.documentElement.setAttribute('data-theme', savedTheme);
       this.updateThemeIcon(savedTheme);
     }
     
-    // Show landing view by default
     this.showView('landing-view');
   },
 
-  // Initialize Lucide icons
   initLucideIcons() {
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
+    if (window.lucide) window.lucide.createIcons();
   },
 
-  // View Navigation
+  // ─── View Navigation ───────────────────────────────────────────────────
   showView(viewId) {
     const views = ['landing-view', 'input-view', 'preview-view', 'loading-view', 'dashboard-view'];
     
-    // Hide all views
     views.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
 
-    // Handle container visibility
     const container = document.getElementById('app-container');
     if (viewId === 'landing-view') {
       container.classList.add('hidden');
@@ -55,17 +56,18 @@ const app = {
       container.classList.remove('hidden');
       document.getElementById(viewId).classList.remove('hidden');
       
-      // If switching to dashboard, re-render chart to ensure correct size
       if (viewId === 'dashboard-view') {
-        setTimeout(() => this.initChart(), 100);
+        setTimeout(() => {
+          this.initChart();
+          if (window.chatbox) window.chatbox.init();
+        }, 100);
       }
     }
 
-    // Scroll to top
     window.scrollTo(0, 0);
   },
 
-  // Theme Toggling
+  // ─── Theme ──────────────────────────────────────────────────────────────
   toggleTheme() {
     const html = document.documentElement;
     const currentTheme = html.getAttribute('data-theme');
@@ -87,7 +89,7 @@ const app = {
     }
   },
 
-  // Landing Page Animations
+  // ─── Hero Animations ───────────────────────────────────────────────────
   initHeroAnimations() {
     const titleEl = document.getElementById('hero-title-text');
     if (!titleEl) return;
@@ -110,7 +112,7 @@ const app = {
     observer.observe(titleEl);
   },
 
-  // Input Screen Tabs
+  // ─── Input Tabs ─────────────────────────────────────────────────────────
   switchInputTab(type) {
     this.state.inputMethod = type;
 
@@ -127,7 +129,7 @@ const app = {
     document.getElementById(`input-tab-${type}`).classList.remove('hidden');
   },
 
-  // File Upload Logic
+  // ─── File Upload ────────────────────────────────────────────────────────
   initDragAndDrop() {
     const dropZone = document.getElementById('drop-zone');
     if (!dropZone) return;
@@ -158,9 +160,9 @@ const app = {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate size (25MB max)
-    if (file.size > 25 * 1024 * 1024) {
-      utils.showToast('File too large. Maximum size is 25MB.', 'error');
+    // Validate size (200MB max)
+    if (file.size > 200 * 1024 * 1024) {
+      utils.showToast('File too large. Maximum size is 200MB.', 'error');
       return;
     }
 
@@ -172,18 +174,19 @@ const app = {
       return;
     }
 
-    // Process file content for text types
+    // Text files — read as text
     if (extension === '.txt' || extension === '.srt') {
       const reader = new FileReader();
       reader.onload = (e) => {
         let content = e.target.result;
         if (extension === '.srt') {
-          // Naive SRT timestamp strip: remove lines with '-->' and lines that are pure numbers
-          content = content.replace(/\\d+\\s*\\r?\\n\\d{2}:\\d{2}:\\d{2}.*-->.*\\r?\\n/g, '');
+          content = content.replace(/\d+\s*\r?\n\d{2}:\d{2}:\d{2}.*-->\.*\r?\n/g, '');
         }
         this.state.transcript = content;
+        this.state.audioFile = null;
+        this.state.audioBase64 = null;
+        this.state.audioMimeType = null;
         
-        // Also populate paste area
         document.getElementById('paste-input').value = content;
         document.getElementById('paste-input').dispatchEvent(new Event('input'));
         
@@ -191,8 +194,24 @@ const app = {
       };
       reader.readAsText(file);
     } else {
-      utils.showToast('Audio/Video file attached. Will be sent for transcription.', 'info');
+      // Audio/Video files — read as base64
+      // Check if too large for Gemini (>20MB raw audio)
+      const sizeMB = file.size / (1024 * 1024);
+      if (sizeMB > 20) {
+        utils.showToast(`Audio file is ${sizeMB.toFixed(1)}MB. For best results, keep under 20MB (~20 min). Large files may time out.`, 'warning');
+      }
+
+      utils.showToast('Audio/Video file attached. Will be transcribed by AI.', 'info');
       this.state.transcript = '[AUDIO_UPLOADED: ' + file.name + ']';
+      this.state.audioFile = file;
+      this.state.audioMimeType = file.type || 'audio/' + extension.replace('.', '');
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64String = e.target.result.split(',')[1];
+        this.state.audioBase64 = base64String;
+      };
+      reader.readAsDataURL(file);
     }
 
     // UI update
@@ -209,9 +228,12 @@ const app = {
     document.getElementById('drop-zone').classList.remove('hidden');
     document.getElementById('file-upload').value = '';
     this.state.transcript = '';
+    this.state.audioFile = null;
+    this.state.audioBase64 = null;
+    this.state.audioMimeType = null;
   },
 
-  // Paste Counter
+  // ─── Paste Counter ──────────────────────────────────────────────────────
   initPasteCounter() {
     const pasteArea = document.getElementById('paste-input');
     const wordCountEl = document.getElementById('paste-word-count');
@@ -221,12 +243,12 @@ const app = {
       const text = e.target.value;
       this.state.transcript = text;
       
-      const words = text.trim() ? text.trim().split(/\\s+/).length : 0;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
       wordCountEl.textContent = `${words} words`;
     }, 300));
   },
 
-  // Attendee Chips
+  // ─── Attendee Chips ─────────────────────────────────────────────────────
   initAttendeeChips() {
     const input = document.getElementById('attendee-input');
     const wrapper = document.getElementById('attendee-chips');
@@ -271,65 +293,128 @@ const app = {
     if (window.lucide) window.lucide.createIcons();
   },
 
-  // Process Meeting Flow
+  // ─── Process Meeting Flow ───────────────────────────────────────────────
   handleProcessMeetingClick() {
-    // 1. Validate Attendees
-    if (!utils.validateAttendees(this.state.attendees)) {
-      utils.showToast('Please add at least one attendee before processing.', 'error');
-      return;
+    // Reset demo mode
+    if (this.state.inputMethod !== 'demo' && window.processor) {
+      window.processor.isDemoMode = false;
+      window.processor.currentDemoId = null;
     }
 
-    // 2. Validate Transcript
+    // Generate session ID for this processing flow
+    this.state.sessionId = utils.generateSessionId();
+
+    // Get current transcript
     let currentText = '';
     if (this.state.inputMethod === 'paste') {
       currentText = document.getElementById('paste-input').value;
     } else {
       currentText = this.state.transcript;
     }
-    
     this.state.transcript = currentText;
 
-    if (!utils.validateTranscript(currentText) && !currentText.includes('[AUDIO_UPLOADED:')) {
+    // If audio file — go to transcription step first
+    if (this.state.audioBase64 && currentText.includes('[AUDIO_UPLOADED:')) {
+      this.startAudioTranscription();
+      return;
+    }
+
+    // Text transcript validation
+    if (!utils.validateTranscript(currentText)) {
       utils.showToast('Transcript is too short or empty. Paste or upload a valid meeting.', 'error');
       return;
     }
 
-    // 3. Load Preview
+    // Show preview
+    this.showPreview(currentText, true);
+  },
+
+  // ─── NEW: Audio Transcription Step ──────────────────────────────────────
+  async startAudioTranscription() {
+    // Show loading view with transcription-specific steps
+    this.showView('loading-view');
+    this.state.isTranscribing = true;
+
+    try {
+      const result = await processor.transcribeAudio(
+        this.state.audioBase64,
+        this.state.audioMimeType
+      );
+
+      if (result && result.transcript) {
+        // Save the real transcript
+        this.state.transcript = result.transcript;
+        
+        // Auto-populate attendees from detected speakers
+        if (result.speakers && result.speakers.length > 0) {
+          this.state.attendees = result.speakers.map(s => {
+            // Extract name from "Speaker 1 (Ravi)" → "Ravi"
+            const nameMatch = s.match(/\(([^)]+)\)/);
+            return nameMatch ? nameMatch[1] : s;
+          });
+          this.renderChips();
+        }
+
+        // Free the audio data — no longer needed
+        this.state.audioBase64 = null;
+        this.state.audioFile = null;
+        this.state.audioMimeType = null;
+
+        this.state.isTranscribing = false;
+
+        // Show the REAL transcript in preview — user can now edit it!
+        this.showPreview(result.transcript, true);
+        utils.showToast(`Transcription complete! ${result.speakers?.length || 0} speakers detected. Review and edit before processing.`, 'success');
+      } else {
+        throw new Error('No transcript returned');
+      }
+
+    } catch (error) {
+      console.error('Audio transcription failed:', error);
+      this.state.isTranscribing = false;
+      this.showView('input-view');
+      utils.showToast(error.message || 'Audio transcription failed. Please try again or paste the transcript manually.', 'error');
+    }
+  },
+
+  // ─── Show Preview ───────────────────────────────────────────────────────
+  showPreview(transcriptText, editable) {
     const editor = document.getElementById('preview-editor');
     if (editor) {
-      if (currentText.includes('[AUDIO_UPLOADED:')) {
-        editor.innerHTML = `<em>${utils.sanitize(currentText)}</em><br><br>The audio file will be transcribed automatically by the AI.`;
-        editor.contentEditable = "false";
-      } else {
-        editor.contentEditable = "true";
-        // Highlight basic speaker patterns (e.g. "Speaker 1:", "Name:")
-        const highlightedHTML = utils.sanitize(currentText)
-          .replace(/^(.*?):/gm, '<strong style="color: var(--color-primary)">$1:</strong>')
-          .replace(/\\n/g, '<br>');
-        editor.innerHTML = highlightedHTML;
-      }
+      editor.contentEditable = editable ? "true" : "false";
+      // Highlight speaker patterns (e.g. "Speaker 1:", "Ravi:")
+      const highlightedHTML = utils.sanitize(transcriptText)
+        .replace(/^(Speaker\s+\d+(?:\s*\([^)]*\))?)\s*:/gm, '<strong style="color: var(--color-primary)">$1:</strong>')
+        .replace(/^([A-Z][a-zA-Z\s]+):/gm, '<strong style="color: var(--color-primary)">$1:</strong>')
+        .replace(/\[(\d{1,2}:\d{2})\]/g, '<span style="color: var(--color-accent); font-size: 0.8em; font-family: var(--font-mono);">[$1]</span>')
+        .replace(/\n/g, '<br>');
+      editor.innerHTML = highlightedHTML;
     }
 
     this.showView('preview-view');
   },
 
+  // ─── Confirm & Process ──────────────────────────────────────────────────
   async confirmAndProcess() {
     const editor = document.getElementById('preview-editor');
     if (editor && editor.contentEditable === "true") {
-      // Save any edits
       this.state.transcript = editor.innerText;
     }
 
+    // Reset chatbox for new analysis
+    if (window.chatbox) window.chatbox.reset();
+
     this.showView('loading-view');
     
-    // Call the API via the processor layer
-    const result = await processor.processTranscript(this.state.transcript, this.state.attendees);
+    // Now this is ALWAYS text — both text uploads and transcribed audio
+    const result = await processor.processTranscript(
+      this.state.transcript,
+      this.state.attendees.length > 0 ? this.state.attendees : [] // Empty = auto-detect
+    );
 
     if (result) {
-      // Save result to global state so the dashboard can read it (Chunk 06)
       this.state.result = result;
       
-      // Render results to DOM
       window.dashboard.renderResults(result);
       window.charts.renderCharts(result);
 
@@ -338,7 +423,7 @@ const app = {
     }
   },
 
-  // Demo Mode Flow
+  // ─── Demo Mode ──────────────────────────────────────────────────────────
   loadDemo(demoId) {
     const demoDataObj = window.demo.getDemoTranscript(demoId);
     if (!demoDataObj) {
@@ -346,6 +431,7 @@ const app = {
       return;
     }
 
+    this.state.sessionId = utils.generateSessionId();
     processor.isDemoMode = true;
     processor.currentDemoId = demoId;
 
@@ -353,14 +439,13 @@ const app = {
     this.state.attendees = [...demoDataObj.attendees];
     this.state.inputMethod = 'demo';
 
-    // Show preview view to let user review
+    // Show preview
     const editor = document.getElementById('preview-editor');
     if (editor) {
       editor.contentEditable = "false";
-      // Highlight speaker names
       const highlightedHTML = utils.sanitize(this.state.transcript)
         .replace(/^(.*?):/gm, '<strong style="color: var(--color-primary)">$1:</strong>')
-        .replace(/\\n/g, '<br>');
+        .replace(/\n/g, '<br>');
       editor.innerHTML = highlightedHTML;
     }
 
@@ -369,7 +454,7 @@ const app = {
     utils.showToast(`Loaded Demo: ${demoDataObj.title}. Click Confirm to process.`, "success");
   },
 
-  // Showcase / Dashboard functionality (from Chunk 02)
+  // ─── Showcase / Floating Image ──────────────────────────────────────────
   initFloatingImage() {
     const floatingImage = document.getElementById('floating-image');
     if (!floatingImage) return;
@@ -412,45 +497,10 @@ const app = {
   },
 
   initChart() {
-    const canvas = document.getElementById('talkTimeChart');
-    if (!canvas || !window.Chart) return;
-    if (this.chartInstance) this.chartInstance.destroy();
-
-    const ctx = canvas.getContext('2d');
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#A0A0C0' : '#6B6B80';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
-    this.chartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Rahul', 'Priya', 'Amit'],
-        datasets: [{
-          label: 'Talk Time (%)',
-          data: [45, 35, 20],
-          backgroundColor: '#E1E0CC',
-          borderRadius: 4,
-          borderSkipped: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100,
-            grid: { color: gridColor, drawBorder: false },
-            ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 11 } }
-          },
-          x: {
-            grid: { display: false, drawBorder: false },
-            ticks: { color: textColor, font: { family: 'Inter', size: 12 } }
-          }
-        }
-      }
-    });
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+      this.chartInstance = null;
+    }
   }
 };
 

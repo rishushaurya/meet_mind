@@ -139,9 +139,9 @@ const charts = {
         datasets: [{
           data: [urgent, important, normal],
           backgroundColor: [
-            'var(--color-danger)',
-            'var(--color-warning)',
-            'var(--color-success)'
+            '#FF5252',
+            '#FFD600',
+            '#00E676'
           ],
           borderRadius: 4
         }]

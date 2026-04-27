@@ -1,10 +1,20 @@
-// MeetMind - Serverless API Engine (Chunk 05)
+// MeetMind - AI Analysis Endpoint (Chunk 05 — Rewrite v2)
+// Takes text transcript → returns structured meeting analysis JSON
+// Audio handling moved to /api/transcribe.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 
-// Initialize SDKs lazily to avoid crashing if one key is missing during build
 let genAI = null;
 let groq = null;
+
+export const maxDuration = 60;
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
 
 const initAI = () => {
   if (!genAI && process.env.GEMINI_API_KEY) {
@@ -15,9 +25,34 @@ const initAI = () => {
   }
 };
 
-const PROMPT_TEMPLATE = `You are a meeting analysis AI. Analyze this transcript.
+// Prompt injection defense — strip known attack patterns
+function sanitizeTranscript(text) {
+  if (!text || typeof text !== 'string') return '';
+  let clean = text;
+  const patterns = [
+    /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)/gi,
+    /system\s*:\s*/gi,
+    /\[INST\]/gi,
+    /\[\/INST\]/gi,
+    /<\|.*?\|>/g,
+    /you\s+are\s+now/gi,
+    /new\s+instructions?\s*:/gi,
+    /override\s+(all|previous|system)/gi,
+    /forget\s+(everything|all|previous)/gi,
+    /act\s+as\s+/gi,
+    /pretend\s+(to\s+be|you\s+are)/gi,
+    /do\s+not\s+follow/gi,
+    /disregard\s+(all|the|previous)/gi,
+  ];
+  patterns.forEach(p => { clean = clean.replace(p, '[filtered]'); });
+  // Also strip HTML tags
+  clean = clean.replace(/<[^>]*>?/gm, '');
+  return clean;
+}
 
-ATTENDEES: {attendee_names}
+const PROMPT_TEMPLATE = `You are a meeting analysis AI. Analyze this meeting transcript.
+
+{attendee_instruction}
 
 TRANSCRIPT:
 {transcript_text}
@@ -62,7 +97,9 @@ RULES:
 5. Be specific, not generic. "Write the introduction section" not "work on the project".
 6. If no action items exist, set empty array. Do NOT invent fake tasks.
 7. Deduplicate: never list the same task twice for the same person.
-8. Handle mixed languages (Hindi+English, etc.) naturally.`;
+8. Handle mixed languages (Hindi+English, etc.) naturally.
+9. The "attendees" array MUST contain EVERY speaker found in the transcript — do not skip anyone.
+10. If a speaker is labeled like "Speaker 1 (Ravi)", use "Ravi" as their name, or "Speaker 1 (Ravi)" if you're unsure about the full name.`;
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -70,43 +107,74 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     initAI();
 
-    const { transcript, attendees } = req.body;
+    if (!genAI && !groq) {
+      return res.status(503).json({ error: 'No AI providers configured.' });
+    }
 
-    // Validation
+    const { transcript, attendees, sessionId } = req.body;
+
+    // Validate transcript
     if (!transcript || typeof transcript !== 'string' || transcript.trim().length < 50) {
-      if (!transcript.includes('[AUDIO_UPLOADED:')) {
-        return res.status(400).json({ error: 'Transcript is too short or invalid. Minimum 50 characters required.' });
-      }
+      return res.status(400).json({ error: 'Transcript is too short or invalid. Minimum 50 characters required.' });
     }
 
-    if (!attendees || !Array.isArray(attendees) || attendees.length === 0) {
-      return res.status(400).json({ error: 'At least one attendee is required.' });
+    // Validate sessionId format
+    if (sessionId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format.' });
     }
 
-    // Strip HTML tags for safety
-    const cleanTranscript = transcript.replace(/<[^>]*>?/gm, '');
-    const cleanAttendees = attendees.map(a => String(a).replace(/<[^>]*>?/gm, ''));
+    // Sanitize transcript against prompt injection + HTML
+    const cleanTranscript = sanitizeTranscript(transcript);
+
+    // Build attendee instruction — OPTIONAL now
+    let attendeeInstruction;
+    if (attendees && Array.isArray(attendees) && attendees.length > 0) {
+      const cleanAttendees = attendees.map(a => String(a).replace(/<[^>]*>?/gm, '').trim()).filter(Boolean);
+      attendeeInstruction = `KNOWN ATTENDEES: ${cleanAttendees.join(', ')}\nUse these names for the attendees array. If you detect additional speakers not in this list, add them too.`;
+    } else {
+      attendeeInstruction = `ATTENDEES: Auto-detect all speakers from the transcript. Use their names if mentioned (e.g., "Speaker 1 (Ravi)" → name is "Ravi"). If no name is mentioned, keep labels like "Speaker 1", "Speaker 2", etc.`;
+    }
 
     const prompt = PROMPT_TEMPLATE
-      .replace('{attendee_names}', cleanAttendees.join(', '))
+      .replace('{attendee_instruction}', attendeeInstruction)
       .replace('{transcript_text}', cleanTranscript);
 
     let parsedResult = null;
+    let lastErrorStatus = 500;
 
-    // Try Gemini First
-    if (genAI) {
+    // ==========================================
+    // 1. PRIMARY PATH: Groq (30 RPM, fast, text-only)
+    // ==========================================
+    if (groq) {
       try {
+        console.log("Attempting analysis via Groq...");
+        const completion = await groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: 'llama-3.3-70b-versatile',
+          temperature: 0.2,
+          response_format: { type: 'json_object' }
+        });
+        const text = completion.choices[0].message.content;
+        parsedResult = JSON.parse(text);
+        parsedResult._provider = 'groq';
+      } catch (groqError) {
+        console.error("Groq analysis failed:", groqError.message);
+        if (groqError.status === 429) lastErrorStatus = 429;
+      }
+    }
+
+    // ==========================================
+    // 2. FALLBACK PATH: Gemini 2.5 Flash
+    // ==========================================
+    if (!parsedResult && genAI) {
+      try {
+        console.log("Falling back to Gemini 2.5 Flash...");
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -115,48 +183,35 @@ export default async function handler(req, res) {
             responseMimeType: "application/json",
           }
         });
-        
         const text = result.response.text();
         parsedResult = JSON.parse(text);
         parsedResult._provider = 'gemini';
       } catch (geminiError) {
-        console.error("Gemini failed:", geminiError);
-        parsedResult = null; // Proceed to fallback
+        console.error("Gemini analysis failed:", geminiError.message);
+        if (geminiError.status === 429 || (geminiError.message && geminiError.message.includes('429'))) lastErrorStatus = 429;
       }
     }
 
-    // Fallback to Groq if Gemini fails or is not configured
-    if (!parsedResult && groq) {
-      try {
-        const completion = await groq.chat.completions.create({
-          messages: [{ role: 'user', content: prompt }],
-          model: 'llama-3.3-70b-versatile',
-          temperature: 0.2,
-          response_format: { type: 'json_object' }
-        });
-
-        const text = completion.choices[0].message.content;
-        parsedResult = JSON.parse(text);
-        parsedResult._provider = 'groq';
-      } catch (groqError) {
-        console.error("Groq failed:", groqError);
-      }
-    }
-
-    // If both failed or parsedResult is still null
+    // ==========================================
+    // 3. FINALIZE
+    // ==========================================
     if (!parsedResult) {
-      return res.status(500).json({ error: 'AI processing failed. Please try again later.' });
+      if (lastErrorStatus === 429) {
+        return res.status(429).json({ error: 'AI_RATE_LIMIT' });
+      }
+      return res.status(500).json({ error: 'AI processing failed. Both Gemini and Groq are unavailable. Please try again later.' });
     }
 
-    // Basic structural validation
-    if (!parsedResult.meeting_summary || !parsedResult.attendees) {
-       return res.status(500).json({ error: 'AI returned malformed JSON structure.' });
+    // Structural validation
+    if (!parsedResult.meeting_summary || !parsedResult.attendees || !Array.isArray(parsedResult.attendees)) {
+      return res.status(500).json({ error: 'AI returned malformed JSON structure. Please try again.' });
     }
 
+    parsedResult._sessionId = sessionId || null;
     return res.status(200).json(parsedResult);
 
   } catch (error) {
-    console.error("Server Error:", error);
+    console.error("Analysis Server Error:", error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
