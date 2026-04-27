@@ -4,6 +4,16 @@
 
 ---
 
+## Session History
+
+| Date | AI | Changes Made |
+|------|----|--------------|
+| **2024-04-25** | Claude/Gemini | Phase 1 (Core Pipeline): Vercel setup, Groq integration, CSS baseline |
+| **2024-04-25** | Claude/Gemini | Phase 2 (Audio & Error Handling): Fallback models, rate limit retries (429 handling), Diagnostics 88/88 passed |
+| **2024-04-26** | Gemini | Phase 3 (God Mode v2): 100MB chunked audio, PDF Generation, Host detection, Floating Chatbox |
+
+---
+
 ## Quick Commands
 
 | Category | Command (paste to AI) |

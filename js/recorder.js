@@ -139,8 +139,8 @@ const recorder = {
       const seconds = Math.floor((elapsed / 1000) % 60);
       const minutes = Math.floor((elapsed / 1000) / 60);
       
-      const formatTime = (val) => val < 10 ? \`0\${val}\` : val;
-      timerEl.textContent = \`\${formatTime(minutes)}:\${formatTime(seconds)}\`;
+      const formatTime = (val) => val < 10 ? `0${val}` : val;
+      timerEl.textContent = `${formatTime(minutes)}:${formatTime(seconds)}`;
     }, 1000);
   },
 

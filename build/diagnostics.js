@@ -133,7 +133,7 @@ if (fs.existsSync(htmlPath)) {
   check('HTML: dashboard-view', html.includes('id="dashboard-view"'), 'Add dashboard-view section');
   check('HTML: DOMPurify CDN', html.includes('dompurify') || html.includes('DOMPurify'), 'Add DOMPurify CDN script');
   check('HTML: Chart.js CDN', html.includes('chart.js') || html.includes('Chart'), 'Add Chart.js CDN script');
-  check('HTML: html2pdf CDN', html.includes('html2pdf'), 'Add html2pdf.js CDN script');
+  check('HTML: jsPDF CDN', html.includes('jspdf'), 'Add jsPDF CDN script');
   check('HTML: Lucide Icons CDN', html.includes('lucide'), 'Add Lucide Icons CDN script');
   check('HTML: Google Fonts', html.includes('fonts.googleapis.com'), 'Add Google Fonts link');
   check('HTML: Meta description', html.includes('meta name="description"'), 'Add meta description for SEO');

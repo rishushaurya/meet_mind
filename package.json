@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "deploy": "vercel --prod",
-    "diagnostics": "node build/diagnostics.js"
+    "diagnostics": "node build/diagnostics.js",
+    "start": "npx vercel dev --listen 0.0.0.0 --port 3000"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

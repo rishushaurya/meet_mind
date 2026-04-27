@@ -14,8 +14,13 @@ const dashboard = {
   renderResults(data) {
     if (!data) return;
 
-    this.renderSummary(data);
-    this.renderPersonCards(data.attendees);
+    try {
+      this.renderSummary(data);
+      this.renderPersonCards(data.attendees || []);
+    } catch (err) {
+      console.error('Dashboard render error:', err);
+      if (window.utils) window.utils.showToast('Failed to render dashboard: ' + err.message, 'error');
+    }
   },
 
   renderSummary(data) {
@@ -113,15 +118,32 @@ const dashboard = {
 
     attendees.forEach((person, index) => {
       // Tab Button
+      const hostName = (app.state.result?.host || '').toLowerCase().trim();
+      const personName = (person.name || '').toLowerCase().trim();
+      const extractedName = (person.name.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase().trim();
+      const isHost = hostName && (
+        hostName === personName ||
+        hostName === extractedName ||
+        personName.includes(hostName) ||
+        hostName.includes(personName) ||
+        (extractedName && hostName.includes(extractedName))
+      );
+      const hostTabLabel = isHost ? ' <i data-lucide="crown" style="width:12px;height:12px;color:var(--color-danger);"></i>' : '';
+
+      // Smart name extraction
+      let displayName = utils.sanitize(person.name);
+      let isGeneric = /^Speaker \d+$/i.test(person.name);
+      const nameMatch = person.name.match(/Speaker \d+\s*\(([^)]+)\)/i);
+      if (nameMatch) displayName = utils.sanitize(nameMatch[1]);
+
+      const avatarColor = this.getAvatarColor(displayName);
+      const initial = displayName.charAt(0).toUpperCase();
+
       const btn = document.createElement('button');
       btn.className = `tab-btn ${index === 0 ? 'active' : ''}`;
-      
-      const avatarColor = this.getAvatarColor(person.name);
-      const initial = person.name.charAt(0).toUpperCase();
-
       btn.innerHTML = `
         <div class="avatar-small" style="background-color: ${avatarColor}">${initial}</div>
-        <span>${utils.sanitize(person.name)}</span>
+        <span class="${isHost ? 'host-name' : ''}">${displayName}${hostTabLabel}</span>
         <span class="badge ${person.action_items?.length > 0 ? '' : 'hidden'}">${person.action_items?.length || 0}</span>
       `;
       btn.onclick = () => app.switchPersonTab(`pane-${index}`, btn);
@@ -145,7 +167,11 @@ const dashboard = {
             <div style="display: flex; align-items: center; gap: 16px;">
               <div class="avatar-large" style="background-color: ${avatarColor}">${initial}</div>
               <div>
-                <h3 style="margin: 0;">${utils.sanitize(person.name)}</h3>
+                <h3 style="margin: 0;" class="${isHost ? 'host-name' : ''}">
+                  ${displayName}
+                  ${isHost ? '<span class="host-badge"><i data-lucide="star" style="width:12px;height:12px;"></i> Host</span>' : ''}
+                  ${isGeneric ? `<i data-lucide="edit-2" style="width:14px;height:14px;cursor:pointer;opacity:0.5;margin-left:8px;" onclick="window.chatbox?.openWithText('Rename ${person.name} to ')"></i>` : ''}
+                </h3>
                 <div style="font-size: 13px; color: var(--color-text-secondary); margin-top: 4px;">
                   Talk Time: ${person.talk_percentage || 0}% | Questions: ${person.questions_asked || 0}
                 </div>

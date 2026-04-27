@@ -5,17 +5,39 @@ const processor = {
   isDemoMode: false,
   currentDemoId: null,
 
-  // ─── 1. Transcribe Audio → Text ────────────────────────────────────────
-  async transcribeAudio(audioBase64, mimeType) {
-    this.showLoadingStep(0, 'transcribe'); // "Uploading audio..."
+  // ─── 1. Transcribe Audio → Text (Chunked Support) ───────────────────────
+  async transcribeAudioFile(file, mimeType) {
+    // Reject files over 24MB upfront since the backend caps at 24.5MB
+    if (file.size > 24 * 1024 * 1024) {
+        throw new Error(`Audio file is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 24MB. Please compress the file or use a shorter recording.`);
+    }
+
+    // Single chunk processing
+    const base64 = await this.fileToBase64(file);
+    return await this._transcribeChunk(base64, mimeType, 0, 1);
+  },
+
+  fileToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  },
+
+  async _transcribeChunk(audioBase64, mimeType, chunkIndex, totalChunks) {
+    if (totalChunks === 1) {
+      this.showLoadingStep(0, 'transcribe'); // "Uploading audio..."
+    }
 
     let attempts = 0;
-    while (true) {
+    while (attempts < 5) { // Cap at 5 retries
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min per request
 
-        if (attempts === 0) {
+        if (attempts === 0 && totalChunks === 1) {
           this.showLoadingStep(1, 'transcribe'); // "Transcribing with AI..."
         }
 
@@ -33,32 +55,32 @@ const processor = {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          // If Rate Limit, stay in the generating screen and retry persistently
           if (response.status === 429) {
             attempts++;
+            if (attempts >= 5) throw new Error('AI is too busy. Please try again later.');
             this.showRetryState();
-            await new Promise(r => setTimeout(r, 15000)); // Wait 15s before next attempt
+            await new Promise(r => setTimeout(r, 8000));
             continue;
           }
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData.error || 'Transcription failed');
         }
 
-        if (attempts === 0) {
+        if (attempts === 0 && totalChunks === 1) {
           this.showLoadingStep(2, 'transcribe'); // "Detecting speakers..."
         }
         
         const data = await response.json();
         
-        if (attempts === 0) {
+        if (attempts === 0 && totalChunks === 1) {
           this.showLoadingStep(3, 'transcribe'); // "Building transcript..."
         }
-        return data; // { transcript, speakers, sessionId }
+        return data; 
 
       } catch (error) {
         if (error.name === 'AbortError') {
-          // Timeouts often happen due to queuing/rate limits, so retry these too
           attempts++;
+          if (attempts >= 5) throw new Error('Transcription timed out repeatedly. Please try a smaller file.');
           this.showRetryState();
           await new Promise(r => setTimeout(r, 5000));
           continue;
@@ -66,6 +88,7 @@ const processor = {
         throw error;
       }
     }
+    throw new Error('Maximum retry attempts reached.');
   },
 
   // ─── 2. Process Text Transcript → Analysis JSON ────────────────────────
@@ -75,8 +98,16 @@ const processor = {
     try {
       // Demo Mode
       if (this.isDemoMode && this.currentDemoId) {
-        return await this.simulateDemoProcessing();
+        const result = await this.simulateDemoProcessing();
+        // Reset after use so it doesn't persist
+        this.isDemoMode = false;
+        this.currentDemoId = null;
+        return result;
       }
+
+      // ALWAYS ensure demo mode is off for real transcripts
+      this.isDemoMode = false;
+      this.currentDemoId = null;
 
       const response = await this.callAnalysisAPI({ transcript, attendees });
       return response;
@@ -90,10 +121,10 @@ const processor = {
   // ─── 3. Refine Results via User Instruction ────────────────────────────
   async refineResults(currentResults, userInstruction) {
     let attempts = 0;
-    while (true) {
+    while (attempts < 3) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
         const response = await fetch('/api/refine', {
           method: 'POST',
@@ -111,8 +142,9 @@ const processor = {
         if (!response.ok) {
           if (response.status === 429) {
             attempts++;
-            utils.showToast("High traffic, retrying...", "warning");
-            await new Promise(r => setTimeout(r, 10000));
+            if (attempts >= 3) throw new Error('System is busy. Please try again later.');
+            utils.showToast("AI is warming up, retrying shortly...", "info");
+            await new Promise(r => setTimeout(r, 4000));
             continue;
           }
           const errData = await response.json().catch(() => ({}));
@@ -124,20 +156,22 @@ const processor = {
       } catch (error) {
         if (error.name === 'AbortError') {
           attempts++;
-          utils.showToast("Taking longer than expected, retrying...", "warning");
+          if (attempts >= 3) throw new Error('Refinement timed out. Please try again later.');
+          utils.showToast("AI is thinking, retrying...", "info");
           await new Promise(r => setTimeout(r, 5000));
           continue;
         }
         throw error;
       }
     }
+    throw new Error('Maximum retry attempts reached.');
   },
 
   // ─── Internal: Call /api/process ────────────────────────────────────────
   async callAnalysisAPI(payload) {
     let attempts = 0;
     
-    while (true) {
+    while (attempts < 3) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min per request
@@ -161,8 +195,9 @@ const processor = {
         if (!response.ok) {
           if (response.status === 429) {
             attempts++;
+            if (attempts >= 3) throw new Error('AI analysis is busy. Please try again later.');
             this.showRetryState();
-            await new Promise(r => setTimeout(r, 15000));
+            await new Promise(r => setTimeout(r, 8000));
             continue;
           }
           const errData = await response.json().catch(() => ({}));
@@ -183,6 +218,7 @@ const processor = {
       } catch (error) {
         if (error.name === 'AbortError') {
           attempts++;
+          if (attempts >= 3) throw new Error('Analysis timed out. Please try a smaller transcript.');
           this.showRetryState();
           await new Promise(r => setTimeout(r, 5000));
           continue;
@@ -190,6 +226,49 @@ const processor = {
         throw error;
       }
     }
+    throw new Error('Maximum retry attempts reached.');
+  },
+
+  // ─── Internal: Call /api/chat ───────────────────────────────────────────
+  async chatAboutMeeting(question, transcript, analysisResults) {
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            transcript,
+            analysisResults,
+            sessionId: app.state.sessionId
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Chat failed');
+        }
+
+        return await response.json();
+
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          attempts++;
+          if (attempts >= 3) throw new Error('Chat timed out. Please try again later.');
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Maximum retry attempts reached.');
   },
 
   // ─── Error Handler ─────────────────────────────────────────────────────
@@ -219,14 +298,19 @@ const processor = {
           const data = window.demo.getDemoResponse(this.currentDemoId);
           resolve(data);
         }
-      }, 1000);
+      }, 400);
     });
   },
 
   // ─── Loading Steps Display ─────────────────────────────────────────────
-  showLoadingStep(stepIndex, phase = 'analyze') {
+  showLoadingStep(stepIndex, phase = 'analyze', customText = null) {
     const statusEl = document.getElementById('loading-status');
     if (!statusEl) return;
+    
+    if (customText) {
+      utils.safeText(statusEl, customText);
+      return;
+    }
     
     const steps = {
       transcribe: [
@@ -253,8 +337,14 @@ const processor = {
     const statusEl = document.getElementById('loading-status');
     if (!statusEl) return;
     
-    // As per user request: "when limit reached you show some red dot and says it make longer then expected"
-    statusEl.innerHTML = `<span style="color: #ef4444; margin-right: 8px;">●</span> Taking longer than expected... AI is busy, waiting to retry.`;
+    statusEl.textContent = '';
+    const dot = document.createElement('span');
+    dot.style.cssText = 'color: #ef4444; margin-right: 8px;';
+    dot.textContent = '●';
+    const msg = document.createElement('span');
+    msg.textContent = 'AI is busy, retrying shortly...';
+    statusEl.appendChild(dot);
+    statusEl.appendChild(msg);
   }
 };
 

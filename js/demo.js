@@ -21,6 +21,7 @@ Rahul: Sure, I'll set up Vercel after the backend is ready.`,
     response: {
       "meeting_summary": "The team finalized roles for their project. Rahul will handle the backend and deployment, Priya will build the frontend, Amit will develop the ML model, and Sneha is responsible for the presentation. They agreed to use the Gemini API and a Kaggle dataset to save time.",
       "meeting_type": "brainstorm",
+      "host": "Rahul",
       "health_score": {
         "score": 8,
         "reasoning": "Productive session with clear role distribution and decisions made quickly. Only minor dependencies need tight coordination."
@@ -158,6 +159,7 @@ Jordan: Perfect. Let's reconvene tomorrow at 10.`,
     response: {
       "meeting_summary": "The startup team discussed blockers related to the upcoming product launch. Alex is troubleshooting Stripe webhooks, which is blocking Maya's checkout flow work. Jordan raised concerns about running ads with a broken checkout, but Maya has already paused them. Jordan will update the landing page copy by tonight.",
       "meeting_type": "standup",
+      "host": "Alex",
       "health_score": {
         "score": 6,
         "reasoning": "Standup revealed a critical blocker (Stripe) causing cascading delays. The team successfully pivoted to pause ads, but tension is present regarding the timeline."
@@ -251,6 +253,7 @@ Dev: Thanks Sarah. That's all from me.`,
     response: {
       "meeting_summary": "Sarah and Dev had a weekly internship sync. Dev successfully completed onboarding but is blocked on GitHub access. Sarah will approve his access and assigned him two 'good first issue' tickets to resolve by Friday. Dev needs to submit his timesheet by Wednesday for Sarah to review.",
       "meeting_type": "check-in",
+      "host": "Sarah",
       "health_score": {
         "score": 9,
         "reasoning": "Quick, effective check-in. Blockers were identified and resolved, and clear goals were set for the week."

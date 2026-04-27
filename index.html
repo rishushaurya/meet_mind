@@ -12,13 +12,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
   <!-- DOMPurify -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 
-  <!-- html2pdf.js -->
-  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js" defer></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
@@ -31,6 +31,9 @@
 </head>
 <body>
 
+  <!-- Background animation (Global) -->
+  <canvas id="starfield-canvas" class="starfield-bg"></canvas>
+
   <!-- Landing Page -->
   <div id="landing-view">
     <section class="hero-section">
@@ -42,6 +45,7 @@
         <nav class="hero-nav">
           <div class="hero-nav-inner">
             <a href="#how-it-works">How it works</a>
+            <a href="#features">Features</a>
             <a href="#demo">Demo</a>
             <a href="https://github.com/rishushaurya" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
@@ -104,6 +108,49 @@
       </div>
     </section>
 
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+      <div class="container">
+        <div class="how-section-header">
+          <h2>Everything You Need</h2>
+          <p>MeetMind is packed with features designed specifically for messy, unstructured group meetings.</p>
+        </div>
+        
+        <div class="features-grid">
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="mic"></i></div>
+            <h3>Multiple Inputs</h3>
+            <p>Upload audio/video, drop a text transcript, or record live directly in your browser.</p>
+          </div>
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="users"></i></div>
+            <h3>Per-Person Cards</h3>
+            <p>Every attendee gets their own dedicated action card. No generic summaries to dig through.</p>
+          </div>
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="quote"></i></div>
+            <h3>Source Verification</h3>
+            <p>Every assigned task includes the exact transcript quote proving who committed to it.</p>
+          </div>
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="sparkles"></i></div>
+            <h3>AI Refinement</h3>
+            <p>Use the chatbox to tweak results. "Change host to Amit" or "Make Ravi's deadline Friday".</p>
+          </div>
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="download"></i></div>
+            <h3>Pro PDF Exports</h3>
+            <p>Export a beautiful, structured multi-page PDF report with embedded charts and health scores.</p>
+          </div>
+          <div class="feature-card glass-panel">
+            <div class="feature-icon"><i data-lucide="shield-check"></i></div>
+            <h3>Total Privacy</h3>
+            <p>Stateless architecture. Nothing is stored in a database. Your data stays in your browser session.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Demo Section -->
     <section id="demo" class="demo-section">
       <div class="demo-section-header">
@@ -151,8 +198,7 @@
 
   <!-- Main App Container for other views -->
   <div id="app-container" class="container hidden">
-    <!-- Floating Paths Background (all views except landing) -->
-    <div class="floating-paths-bg" id="floating-paths-bg"></div>
+    <div class="hero-noise noise-overlay"></div>
     
     <!-- Header for App -->
     <header style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) 0; margin-bottom: var(--space-xl);">
@@ -191,7 +237,7 @@
               <label for="file-upload">Drag and drop or choose file to upload</label>
               <input id="file-upload" type="file" accept=".txt,.srt,.mp3,.mp4,.wav,.webm" onchange="app.handleFileSelect(event)">
             </div>
-            <p class="upload-hint" style="margin-top: 8px;">Max size: 200MB. Accepted: TXT, SRT, MP3, WAV, MP4, WEBM</p>
+            <p class="upload-hint" style="margin-top: 8px;">Max size: 25MB. Accepted: TXT, SRT, MP3, WAV, MP4, WEBM</p>
           </div>
 
           <!-- Selected File (Hidden by default) -->
@@ -267,7 +313,7 @@ Speaker 2: Hi, let's start the meeting."></textarea>
         <h2 class="showcase-header">Demo Meetings</h2>
         
         <div class="showcase-list">
-          <a href="#" class="showcase-item" onmouseenter="app.showHoverImage('demo1')" onmouseleave="app.hideHoverImage()">
+          <a href="#" class="showcase-item" onclick="event.preventDefault(); app.loadDemo('demo1')" onmouseenter="app.showHoverImage('demo1')" onmouseleave="app.hideHoverImage()">
             <div class="showcase-item-bg"></div>
             <div class="showcase-content">
               <div>
@@ -281,7 +327,7 @@ Speaker 2: Hi, let's start the meeting."></textarea>
             </div>
           </a>
           
-          <a href="#" class="showcase-item" onmouseenter="app.showHoverImage('demo2')" onmouseleave="app.hideHoverImage()">
+          <a href="#" class="showcase-item" onclick="event.preventDefault(); app.loadDemo('demo2')" onmouseenter="app.showHoverImage('demo2')" onmouseleave="app.hideHoverImage()">
             <div class="showcase-item-bg"></div>
             <div class="showcase-content">
               <div>
@@ -303,6 +349,11 @@ Speaker 2: Hi, let's start the meeting."></textarea>
       <div class="upload-card glass-panel" style="max-width: 800px;">
         <h3 style="margin-bottom: 8px;">Review Transcript</h3>
         <p style="color: var(--color-text-secondary); margin-bottom: 24px; font-size: 0.875rem;">Edit any mistakes before AI processing. Ensure speaker labels are clear.</p>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+          <button class="btn btn-outline" onclick="app.showView('input-view')">Back</button>
+          <button class="btn btn-primary" onclick="app.confirmAndProcess()">Confirm & Process AI</button>
+        </div>
 
         <div id="preview-editor" class="preview-editor" contenteditable="true">
           <!-- Text injected here -->
@@ -431,26 +482,50 @@ Speaker 2: Hi, let's start the meeting."></textarea>
           </div>
         </div>
       </div>
-
-      <!-- Chatbox for post-AI corrections -->
-      <div class="chatbox-container glass-panel">
-        <div class="chatbox-header">
-          <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--color-accent);"></i>
-          <span>Refine Results</span>
-        </div>
-        <div id="chatbox-history" class="chatbox-history hidden"></div>
-        <div class="chatbox-input-row">
-          <input type="text" id="chatbox-input" class="chatbox-input" placeholder='e.g. "Move task X from Ravi to Amit" or "Change deadline to Friday"' maxlength="500">
-          <button id="chatbox-send" class="chatbox-send-btn" title="Send">
-            <i data-lucide="send" style="width:16px;height:16px;"></i>
-          </button>
-        </div>
-        <div class="chatbox-footer">
-          <span id="chatbox-counter">0/500</span>
-        </div>
-      </div>
     </section>
 
+  </div>
+
+  <!-- Floating Chatbox Toggle Button -->
+  <button id="chatbox-toggle" class="chatbox-toggle-btn hidden" onclick="document.getElementById('chatbox-wrapper').classList.toggle('open')" title="Refine Results">
+    <i data-lucide="sparkles" style="width:24px;height:24px;"></i>
+  </button>
+
+  <!-- Floating Chatbox Sidebar -->
+  <div id="chatbox-wrapper" class="chatbox-wrapper glass-panel">
+    <div class="chatbox-header" style="display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md); border-bottom: 1px solid var(--color-border); margin-bottom: 0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="sparkles" style="width:16px;height:16px;color:var(--color-accent);"></i>
+          <span style="font-weight: 600; font-size: 0.875rem; color: var(--color-text);">MeetMind Chat</span>
+        </div>
+        <button class="btn btn-icon" onclick="document.getElementById('chatbox-wrapper').classList.remove('open')" style="padding: 4px; border: none; background: transparent;">
+          <i data-lucide="x" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+      <div class="chatbox-tabs" style="display: flex; gap: var(--space-sm);">
+        <button id="chat-tab-ask" class="chatbox-tab active" onclick="chatbox.switchTab('ask')">Ask About Meeting</button>
+        <button id="chat-tab-apply" class="chatbox-tab" onclick="chatbox.switchTab('apply')">Apply Changes</button>
+      </div>
+    </div>
+    
+    <div id="chatbox-ask-history" class="chatbox-history">
+      <div class="chatbox-message chatbox-system">
+        <i data-lucide="sparkles" style="width:14px;height:14px;flex-shrink:0;margin-top:2px;"></i>
+        <span>Ask me anything about the meeting! (e.g. "What did Ravi say about the deadline?")</span>
+      </div>
+    </div>
+    <div id="chatbox-apply-history" class="chatbox-history hidden"></div>
+    
+    <div class="chatbox-input-row">
+      <input type="text" id="chatbox-input" class="chatbox-input" placeholder='Ask a question...' maxlength="500">
+      <button id="chatbox-send" class="chatbox-send-btn" title="Send">
+        <i data-lucide="send" style="width:16px;height:16px;"></i>
+      </button>
+    </div>
+    <div class="chatbox-footer">
+      <span id="chatbox-counter">0/500</span>
+    </div>
   </div>
 
   <!-- Floating Image for Showcase Hover -->
@@ -468,7 +543,7 @@ Speaker 2: Hi, let's start the meeting."></textarea>
   <script src="js/charts.js"></script>
   <script src="js/export.js"></script>
   <script src="js/chatbox.js"></script>
-  <script src="js/paths.js"></script>
+  <script src="js/starfield.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

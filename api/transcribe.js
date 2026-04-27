@@ -7,26 +7,22 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-let genAI = null;
-let groq = null;
-
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '25mb', // Groq limit is 25MB
+      sizeLimit: '50mb', // Base64 overhead for 24.5MB audio is ~33MB
     },
   },
 };
 
-const initAI = () => {
-  if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  if (!groq && process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  }
-};
+function initAI() {
+  const genAI = process.env.GEMINI_API_KEY 
+    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+  const groq = process.env.GROQ_API_KEY 
+    ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+  return { genAI, groq };
+}
 
 const GEMINI_TRANSCRIBE_PROMPT = `You are a professional audio transcription AI. Transcribe this audio recording into text with perfect accuracy.
 
@@ -63,7 +59,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    initAI();
+    const { genAI, groq } = initAI();
 
     if (!genAI && !groq) {
       return res.status(503).json({ error: 'No AI providers configured. Please set GEMINI_API_KEY and GROQ_API_KEY.' });
@@ -131,11 +127,12 @@ export default async function handler(req, res) {
         }
 
       } catch (err) {
-        console.error("Groq Whisper failed:", err.message);
+        console.error("Groq Whisper failed:", { status: err.status, message: err.message, code: err.error?.error?.code || err.error?.code });
         if (tmpFilePath) {
           await fs.promises.unlink(tmpFilePath).catch(() => {});
         }
         if (err.status === 429) lastErrorStatus = 429;
+        if (err.status === 401 || err.status === 403) lastErrorStatus = err.status;
       }
     }
 
@@ -147,7 +144,7 @@ export default async function handler(req, res) {
       
       try {
         // Use the updated gemini-2.5-flash model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const result = await model.generateContent({
           contents: [{
@@ -167,8 +164,9 @@ export default async function handler(req, res) {
         }
 
       } catch (err) {
-        console.error("Gemini fallback failed:", err.message);
+        console.error("Gemini fallback failed:", { status: err.status, message: err.message });
         if (err.status === 429 || (err.message && err.message.includes('429'))) lastErrorStatus = 429;
+        if (err.status === 401 || err.status === 403 || err.status === 404 || (err.message && err.message.includes('403'))) lastErrorStatus = err.status || 403;
       }
     }
 
@@ -179,6 +177,9 @@ export default async function handler(req, res) {
       // If we hit a rate limit on the last attempt, return 429 explicitly
       if (lastErrorStatus === 429) {
         return res.status(429).json({ error: 'AI_RATE_LIMIT' });
+      }
+      if (lastErrorStatus === 401 || lastErrorStatus === 403) {
+        return res.status(lastErrorStatus).json({ error: 'API key is invalid or quota exceeded. Please check your keys.' });
       }
       return res.status(500).json({ error: 'Audio transcription failed on all available AI models. Please try again.' });
     }

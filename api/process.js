@@ -4,26 +4,22 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 
-let genAI = null;
-let groq = null;
-
 export const maxDuration = 60;
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb',
+      sizeLimit: '10mb',
     },
   },
 };
 
-const initAI = () => {
-  if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  if (!groq && process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  }
-};
+function initAI() {
+  const genAI = process.env.GEMINI_API_KEY 
+    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+  const groq = process.env.GROQ_API_KEY 
+    ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+  return { genAI, groq };
+}
 
 // Prompt injection defense — strip known attack patterns
 function sanitizeTranscript(text) {
@@ -62,6 +58,7 @@ Extract in valid JSON:
 {
   "meeting_summary": "3-sentence executive summary",
   "meeting_type": "standup|brainstorm|decision|check-in|general",
+  "host": "name of the person who organized/led the meeting",
   "health_score": {
     "score": 1-10,
     "reasoning": "why this score"
@@ -98,8 +95,8 @@ RULES:
 6. If no action items exist, set empty array. Do NOT invent fake tasks.
 7. Deduplicate: never list the same task twice for the same person.
 8. Handle mixed languages (Hindi+English, etc.) naturally.
-9. The "attendees" array MUST contain EVERY speaker found in the transcript — do not skip anyone.
-10. If a speaker is labeled like "Speaker 1 (Ravi)", use "Ravi" as their name, or "Speaker 1 (Ravi)" if you're unsure about the full name.`;
+10. If a speaker is labeled like "Speaker 1 (Ravi)", use "Ravi" as their name, or "Speaker 1 (Ravi)" if you're unsure about the full name.
+11. Detect the meeting HOST — the person who speaks first, sets the agenda, or manages transitions. If unclear, pick the most active speaker.`;
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -111,7 +108,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    initAI();
+    const { genAI, groq } = initAI();
 
     if (!genAI && !groq) {
       return res.status(503).json({ error: 'No AI providers configured.' });
@@ -164,8 +161,9 @@ export default async function handler(req, res) {
         parsedResult = JSON.parse(text);
         parsedResult._provider = 'groq';
       } catch (groqError) {
-        console.error("Groq analysis failed:", groqError.message);
+        console.error("Groq analysis failed:", { status: groqError.status, message: groqError.message, code: groqError.error?.error?.code || groqError.error?.code });
         if (groqError.status === 429) lastErrorStatus = 429;
+        if (groqError.status === 401 || groqError.status === 403) lastErrorStatus = groqError.status;
       }
     }
 
@@ -175,7 +173,7 @@ export default async function handler(req, res) {
     if (!parsedResult && genAI) {
       try {
         console.log("Falling back to Gemini 2.5 Flash...");
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
@@ -187,8 +185,9 @@ export default async function handler(req, res) {
         parsedResult = JSON.parse(text);
         parsedResult._provider = 'gemini';
       } catch (geminiError) {
-        console.error("Gemini analysis failed:", geminiError.message);
+        console.error("Gemini analysis failed:", { status: geminiError.status, message: geminiError.message });
         if (geminiError.status === 429 || (geminiError.message && geminiError.message.includes('429'))) lastErrorStatus = 429;
+        if (geminiError.status === 401 || geminiError.status === 403 || geminiError.status === 404 || (geminiError.message && geminiError.message.includes('403'))) lastErrorStatus = geminiError.status || 403;
       }
     }
 
@@ -198,6 +197,9 @@ export default async function handler(req, res) {
     if (!parsedResult) {
       if (lastErrorStatus === 429) {
         return res.status(429).json({ error: 'AI_RATE_LIMIT' });
+      }
+      if (lastErrorStatus === 401 || lastErrorStatus === 403) {
+        return res.status(lastErrorStatus).json({ error: 'API key is invalid or quota exceeded. Please check your keys.' });
       }
       return res.status(500).json({ error: 'AI processing failed. Both Gemini and Groq are unavailable. Please try again later.' });
     }
